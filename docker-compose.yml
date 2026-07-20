@@ -1,0 +1,16 @@
+services:
+  knip:
+    build: .
+    container_name: knip-platform
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      KNIP_ENV: development
+      KNIP_DATA_FILE: /app/data/database.json
+    volumes:
+      - knip_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  knip_data:
