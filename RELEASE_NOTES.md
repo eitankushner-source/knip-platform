@@ -1,28 +1,12 @@
-# KNIP v0.1.0-alpha-foundation
+# KNIP v0.2.0 Alpha — Story Intelligence
 
 ## Added
+- Story workspace and repository navigation
+- Evidence catalogue with reliability score and provenance
+- Transparent deterministic story analyzer
+- Category, keywords, completeness, reliability, confidence, risks, and recommendation
+- Story detail and analysis APIs
+- Expanded audit events and automated tests
 
-- Clean repository baseline
-- Reproducible Node 20 runtime
-- Docker and Docker Compose support
-- Windows launch, stop, and reset scripts
-- System health endpoint
-- Story intake and persistent story repository
-- Audit event recording
-- Automated syntax and unit tests
-- GitHub Actions CI workflow
-- Foundation documentation
-
-## Deferred
-
-- Real authentication and identity provider
-- PostgreSQL database
-- AI orchestration
-- Audience intelligence
-- Decision intelligence
-- Institutional learning
-- Production deployment
-
-## Release intent
-
-This is a stable engineering foundation, not the completed KNIP MVP.
+## Important limitation
+This release uses a deterministic local analyzer, not an external LLM. It is designed to validate the workflow and explainability contract before AI-provider integration.

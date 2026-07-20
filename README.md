@@ -1,54 +1,25 @@
 # KNIP Platform
 
-KNIP is the Knowledge & Narrative Intelligence Platform developed for the Kerem Alliance.
+**Version:** 0.2.0 Alpha — Story Intelligence
 
-> The purpose of technology is not to automate communications. The purpose of technology is to improve the quality, consistency, and explainability of strategic decisions.
-
-## Release
-
-`v0.1.0-alpha-foundation`
-
-This clean foundation includes:
-
-- Dependency-free Node.js runtime
-- One-command Docker startup
-- Health endpoint
-- Story intake and repository
-- Persistent local data
-- Audit trail
-- Automated tests
-- GitHub Actions validation
+KNIP is an AI-native decision-intelligence platform for narrative strategy. This release implements the first vertical slice: story intake, evidence cataloguing, transparent first-pass analysis, persistent local data, and audit logging.
 
 ## Windows 11 quick start
 
-1. Install and start Docker Desktop.
-2. Extract the project.
-3. Double-click `Run-KNIP.bat`.
-4. Open `http://localhost:3000`.
+1. Install and open Docker Desktop.
+2. Double-click `Run-KNIP.bat`.
+3. Open `http://localhost:3000`.
 
-To stop it, run `Stop-KNIP.bat`.
-
-## Developer start
+## Verify locally
 
 ```bash
-npm start
+npm run verify
 ```
 
-## Test
+## Current analysis model
 
-```bash
-npm run check
-npm test
-```
+The Alpha analyzer is deterministic and local. It provides classification, keywords, evidence completeness, reliability, confidence, risks, and a next-step recommendation. It does **not** call an external LLM yet; provider-backed AI orchestration will be added in a later milestone.
 
-## API
+## Data
 
-- `GET /api/health`
-- `GET /api/stories`
-- `POST /api/stories`
-- `GET /api/audit`
-- `POST /api/reset`
-
-## Next milestone
-
-KNIP-1020: Story Intelligence Engine.
+Runtime data is stored in `data/database.json` and is ignored by Git. `data/seed.json` remains the reproducible demo baseline.

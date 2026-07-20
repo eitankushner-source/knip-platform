@@ -1,53 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>KNIP Alpha Foundation</title>
-  <link rel="stylesheet" href="/styles.css" />
-</head>
-<body>
-  <header>
-    <div>
-      <p class="eyebrow">KEREM ALLIANCE</p>
-      <h1>KNIP Alpha Foundation</h1>
-      <p>Evidence → Audience → Strategy → Explainability → Learning</p>
-    </div>
-    <div id="health" class="status">Checking system…</div>
-  </header>
-
-  <main>
-    <section class="panel hero">
-      <div>
-        <h2>Platform foundation is operational</h2>
-        <p>This release establishes a reproducible local runtime, story intake, persistent data, health monitoring, and an audit trail.</p>
-      </div>
-      <div class="metric"><strong id="storyCount">0</strong><span>Stories</span></div>
-      <div class="metric"><strong id="auditCount">0</strong><span>Audit events</span></div>
-    </section>
-
-    <section class="grid">
-      <form id="storyForm" class="panel">
-        <h2>Add a story</h2>
-        <label>Title<input id="title" required maxlength="180" /></label>
-        <label>Summary<textarea id="summary" rows="5"></textarea></label>
-        <label>Source<input id="source" /></label>
-        <button type="submit">Save story</button>
-        <p id="formMessage" class="message"></p>
-      </form>
-
-      <section class="panel">
-        <div class="sectionHeader"><h2>Story repository</h2><button id="refresh" class="secondary">Refresh</button></div>
-        <div id="stories" class="cards"></div>
-      </section>
-    </section>
-
-    <section class="panel">
-      <div class="sectionHeader"><h2>Audit trail</h2><button id="reset" class="danger">Reset demo data</button></div>
-      <div id="audit" class="audit"></div>
-    </section>
-  </main>
-
-  <script type="module" src="/app.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KNIP Story Intelligence</title><link rel="stylesheet" href="/styles.css"></head><body>
+<header><div><p class="eyebrow">KEREM ALLIANCE</p><h1>KNIP Story Intelligence</h1><p>Evidence → Audience → Strategy → Explainability → Learning</p></div><div id="health" class="status">Checking system…</div></header>
+<main>
+<section class="panel hero"><div><h2>From raw story to review-ready intelligence</h2><p>Capture a story, catalogue evidence, and generate a transparent first-pass assessment before audience matching.</p></div><div class="metric"><strong id="storyCount">0</strong><span>Stories</span></div><div class="metric"><strong id="analysisCount">0</strong><span>Analyzed</span></div><div class="metric"><strong id="auditCount">0</strong><span>Audit events</span></div></section>
+<section class="workspace">
+<aside class="panel"><div class="sectionHeader"><h2>Story repository</h2><button id="refresh" class="secondary">Refresh</button></div><form id="storyForm" class="compact"><label>Title<input id="title" required maxlength="180"></label><label>Summary<textarea id="summary" rows="4"></textarea></label><label>Source<input id="source"></label><button type="submit">Save story</button><p id="formMessage" class="message"></p></form><div id="stories" class="cards"></div></aside>
+<section id="detail" class="panel detail"><div class="empty"><h2>Select a story</h2><p>Choose a story to review its evidence and analysis.</p></div></section>
+</section>
+<section class="panel"><div class="sectionHeader"><h2>Audit trail</h2><button id="reset" class="danger">Reset demo data</button></div><div id="audit" class="audit"></div></section>
+</main><script type="module" src="/app.js"></script></body></html>

@@ -1,74 +1,9 @@
-const $ = (selector) => document.querySelector(selector);
-
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { 'content-type': 'application/json', ...(options.headers || {}) },
-    ...options
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || 'Request failed');
-  return payload;
-}
-
-function escapeHtml(value = '') {
-  return String(value).replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
-}
-
-async function load() {
-  const [health, storyData, auditData] = await Promise.all([
-    api('/api/health'), api('/api/stories'), api('/api/audit')
-  ]);
-
-  $('#health').textContent = `System ${health.status} · ${health.version}`;
-  $('#storyCount').textContent = storyData.stories.length;
-  $('#auditCount').textContent = auditData.auditEvents.length;
-
-  $('#stories').innerHTML = storyData.stories.map((story) => `
-    <article class="card">
-      <h3>${escapeHtml(story.title)}</h3>
-      <p>${escapeHtml(story.summary || 'No summary yet.')}</p>
-      <div class="meta">${escapeHtml(story.source || 'No source')} · ${new Date(story.createdAt).toLocaleString()}</div>
-      <span class="badge">${escapeHtml(story.status)}</span>
-    </article>
-  `).join('') || '<p>No stories yet.</p>';
-
-  $('#audit').innerHTML = auditData.auditEvents.map((event) => `
-    <div class="auditRow">
-      <span>${new Date(event.createdAt).toLocaleString()}</span>
-      <strong>${escapeHtml(event.action)}</strong>
-      <span>${escapeHtml(event.entityType)} · ${escapeHtml(event.entityId)}</span>
-    </div>
-  `).join('');
-}
-
-$('#storyForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const message = $('#formMessage');
-  message.textContent = 'Saving…';
-  try {
-    await api('/api/stories', {
-      method: 'POST',
-      body: JSON.stringify({
-        title: $('#title').value,
-        summary: $('#summary').value,
-        source: $('#source').value
-      })
-    });
-    event.target.reset();
-    message.textContent = 'Story saved.';
-    await load();
-  } catch (error) {
-    message.textContent = error.message;
-  }
-});
-
-$('#refresh').addEventListener('click', load);
-$('#reset').addEventListener('click', async () => {
-  if (!confirm('Reset KNIP demo data?')) return;
-  await api('/api/reset', { method: 'POST', body: '{}' });
-  await load();
-});
-
-load().catch((error) => {
-  $('#health').textContent = `System error: ${error.message}`;
-});
+const $ = s => document.querySelector(s); let selectedId = null;
+async function api(path, options={}) { const r=await fetch(path,{headers:{'content-type':'application/json',...(options.headers||{})},...options}); const p=await r.json(); if(!r.ok) throw new Error(p.error||'Request failed'); return p; }
+function esc(v=''){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function scoreClass(n){return n>=75?'good':n>=55?'warn':'low';}
+async function load(){const [health,sd,ad]=await Promise.all([api('/api/health'),api('/api/stories'),api('/api/audit')]); $('#health').textContent=`System ${health.status} · ${health.version}`; $('#storyCount').textContent=sd.stories.length; $('#analysisCount').textContent=sd.stories.filter(s=>s.latestAnalysis).length; $('#auditCount').textContent=ad.auditEvents.length; $('#stories').innerHTML=sd.stories.map(s=>`<button class="storyCard ${selectedId===s.id?'selected':''}" data-id="${s.id}"><span class="storyTop"><strong>${esc(s.title)}</strong><span class="badge">${esc(s.status)}</span></span><small>${s.evidenceCount} evidence · ${s.latestAnalysis?`${s.latestAnalysis.confidence}% confidence`:'Not analyzed'}</small></button>`).join('')||'<p>No stories yet.</p>'; document.querySelectorAll('.storyCard').forEach(b=>b.onclick=()=>selectStory(b.dataset.id)); $('#audit').innerHTML=ad.auditEvents.map(e=>`<div class="auditRow"><span>${new Date(e.createdAt).toLocaleString()}</span><strong>${esc(e.action)}</strong><span>${esc(e.entityType)} · ${esc(e.detail||e.entityId)}</span></div>`).join(''); if(selectedId && sd.stories.some(s=>s.id===selectedId)) await renderDetail();}
+async function selectStory(id){selectedId=id; await load();}
+async function renderDetail(){const {story,evidence,analyses}=await api(`/api/stories/${selectedId}`); const a=analyses[0]; $('#detail').innerHTML=`<div class="sectionHeader"><div><p class="eyebrow dark">STORY WORKSPACE</p><h2>${esc(story.title)}</h2></div><span class="badge">${esc(story.status)}</span></div><p class="lead">${esc(story.summary||'No summary yet.')}</p><p class="meta">${esc(story.source||'No source')} · Updated ${new Date(story.updatedAt||story.createdAt).toLocaleString()}</p><div class="actionRow"><button id="analyze">Run analysis</button></div>${a?analysisHtml(a):'<div class="notice">No analysis yet. Add evidence, then run analysis.</div>'}<div class="twoCol"><section><h3>Evidence (${evidence.length})</h3><div class="evidenceList">${evidence.map(e=>`<article class="evidence"><div><strong>${esc(e.title)}</strong><span class="reliability">${e.reliability}% reliability</span></div><p>${esc(e.claim)}</p><small>${esc(e.sourceName||'No source name')}</small></article>`).join('')||'<p>No evidence catalogued.</p>'}</div></section><form id="evidenceForm" class="inset"><h3>Add evidence</h3><label>Evidence title<input id="eTitle" required></label><label>Claim<textarea id="eClaim" rows="3" required></textarea></label><label>Source name<input id="eSource"></label><label>Reliability (0–100)<input id="eReliability" type="number" min="0" max="100" value="60"></label><button type="submit">Add evidence</button><p id="eMessage" class="message"></p></form></div>`; $('#analyze').onclick=async()=>{await api(`/api/stories/${selectedId}/analyze`,{method:'POST',body:'{}'}); await load();}; $('#evidenceForm').onsubmit=async ev=>{ev.preventDefault(); const m=$('#eMessage'); m.textContent='Saving…'; try{await api(`/api/stories/${selectedId}/evidence`,{method:'POST',body:JSON.stringify({title:$('#eTitle').value,claim:$('#eClaim').value,sourceName:$('#eSource').value,reliability:Number($('#eReliability').value)})}); m.textContent='Evidence added.'; await load();}catch(err){m.textContent=err.message;}};}
+function analysisHtml(a){return `<section class="analysis"><div class="sectionHeader"><h3>Latest analysis</h3><strong class="score ${scoreClass(a.confidence)}">${a.confidence}% confidence</strong></div><div class="scoreGrid"><div><span>Category</span><strong>${esc(a.category)}</strong></div><div><span>Completeness</span><strong>${a.completeness}%</strong></div><div><span>Reliability</span><strong>${a.reliability}%</strong></div><div><span>Sources</span><strong>${a.sourceCount}</strong></div></div><p><strong>Recommendation:</strong> ${esc(a.recommendation)}</p><div class="chips">${a.keywords.map(k=>`<span>${esc(k)}</span>`).join('')}</div>${a.risks.length?`<div class="risks"><strong>Risks</strong><ul>${a.risks.map(r=>`<li>${esc(r)}</li>`).join('')}</ul></div>`:'<div class="notice success">No material evidence gaps detected by the Alpha analyzer.</div>'}<small>${esc(a.model)} · ${new Date(a.createdAt).toLocaleString()}</small></section>`;}
+$('#storyForm').onsubmit=async e=>{e.preventDefault(); const m=$('#formMessage'); m.textContent='Saving…'; try{const {story}=await api('/api/stories',{method:'POST',body:JSON.stringify({title:$('#title').value,summary:$('#summary').value,source:$('#source').value})}); e.target.reset(); selectedId=story.id; m.textContent='Story saved.'; await load();}catch(err){m.textContent=err.message;}}; $('#refresh').onclick=load; $('#reset').onclick=async()=>{if(!confirm('Reset KNIP demo data?'))return; await api('/api/reset',{method:'POST',body:'{}'}); selectedId=null; await load();}; load().catch(e=>$('#health').textContent=`System error: ${e.message}`);
