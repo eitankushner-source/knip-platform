@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT || 3000);
 const DATA_FILE = path.resolve(__dirname, process.env.KNIP_DATA_FILE || './data/database.json');
 const SEED_FILE = path.resolve(__dirname, './data/seed.json');
-const VERSION = '0.5.0-alpha-audience-intelligence-iteration-5.1';
+const VERSION = '0.7.2-alpha-ai-campaign-strategist';
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
 
 async function ensureDatabase() {
@@ -189,6 +189,20 @@ function analyzeStory(story, evidence, audiences) {
   analysis.audienceMatches = matchAudiences(story,analysis,audiences||[]);
   return analysis;
 }
+
+function buildCampaignPlans(db){
+  const briefs=db.decisionBriefs||[]; const audiences=db.audiences||[];
+  return briefs.map((brief,index)=>{
+    const audience=audiences.find(a=>a.name===brief.audience)||audiences[index%Math.max(audiences.length,1)]||{};
+    const confidence=Number(brief.confidence||80); const risk=(brief.risks||[]).length*12+18;
+    const objective=confidence>=88?'Change perceptions':confidence>=78?'Build trust':'Increase awareness';
+    const framing=audience.framing||'Lead with authentic human impact, shared values, and measurable outcomes.';
+    const priority=confidence>=90?'IMMEDIATE':confidence>=82?'HIGH':'NORMAL';
+    const recommendation=confidence>=88&&risk<55?'PROCEED':confidence>=75?'PROCEED_WITH_REVISIONS':'HOLD';
+    return {id:`campaign_${brief.id}`,briefId:brief.id,storyId:brief.storyId,title:brief.title,audience:brief.audience,status:'DRAFT',durationWeeks:4,confidence,objective,priority,budget:confidence>=90?'MEDIUM':'SMALL',complexity:(audience.channels||[]).length>3?'COMPLEX':'MEDIUM',framing,channels:audience.channels||['Instagram','Partner newsletters'],messengers:audience.messengers||['Field practitioners'],coreMessages:['Lead with the people affected','Show measurable outcomes','Mention Israel after the human benefit'],assets:['60-second video','Infographic','Human-interest article','Social media carousel'],cta:'Learn how practical Israeli innovation is improving lives.',kpis:['Reach','Engagement','Positive sentiment','Click-through rate'],dependencies:['Confirm one additional independent outcome source','Secure participant permissions','Prepare audience-specific creative assets'],ruby:{name:'Ruby',role:'Chief Strategy Officer',recommendation,confidence,objective,priority,budget:confidence>=90?'MEDIUM':'SMALL',complexity:(audience.channels||[]).length>3?'COMPLEX':'MEDIUM',narrative:'Human Story',summary:`Position this as a ${objective.toLowerCase()} campaign. Lead with the beneficiaries, mention Israel second, avoid political framing, and emphasize verified human impact.`,strengths:['Strong human-interest angle','Clear audience relevance','Practical and measurable benefit'],risks:brief.risks||['Avoid promotional tone','Verify all outcome claims'],why:`This recommendation reflects ${confidence}% decision confidence, the selected audience profile, evidence quality, and execution feasibility.`}};
+  });
+}
+
 async function serveStatic(req,res) {
   const requested=req.url==='/'?'/index.html':req.url;
   const safe=path.normalize(requested).replace(/^\.\.(\/|\\|$)/,'');
@@ -223,6 +237,9 @@ export async function handleRequest(req,res) {
   if(req.method==='POST'&&evidenceMatch){try{const body=await readBody(req);if(!body.title||!body.claim)return sendJson(res,400,{error:'title and claim are required'});const db=await readDb();const story=db.stories.find(s=>s.id===evidenceMatch[1]);if(!story)return sendJson(res,404,{error:'Story not found'});db.evidence??=[];const item={id:`evidence_${crypto.randomUUID()}`,storyId:story.id,title:String(body.title).trim(),claim:String(body.claim).trim(),sourceName:String(body.sourceName||'').trim(),sourceUrl:String(body.sourceUrl||'').trim(),sourceType:String(body.sourceType||'').trim(),reliability:clamp(Number(body.reliability||50)),createdAt:new Date().toISOString()};db.evidence.unshift(item);story.status='RESEARCHING';story.updatedAt=new Date().toISOString();audit(db,'EVIDENCE_ADDED','EVIDENCE',item.id,'usr_admin',`Story ${story.id}`);await writeDb(db);return sendJson(res,201,{evidence:item});}catch(error){return sendJson(res,400,{error:error.message});}}
   const analyzeMatch=url.pathname.match(/^\/api\/stories\/([^/]+)\/analyze$/);
   if(req.method==='POST'&&analyzeMatch){const db=await readDb();const story=db.stories.find(s=>s.id===analyzeMatch[1]);if(!story)return sendJson(res,404,{error:'Story not found'});db.analyses??=[];const analysis=analyzeStory(story,(db.evidence||[]).filter(e=>e.storyId===story.id),db.audiences||[]);db.analyses.unshift(analysis);story.status='NEEDS_REVIEW';story.updatedAt=new Date().toISOString();audit(db,'STORY_ANALYZED','STORY',story.id,'usr_admin',`Confidence ${analysis.confidence}; opportunity ${analysis.opportunity}`);await writeDb(db);return sendJson(res,201,{analysis});}
+  if(req.method==='GET'&&url.pathname==='/api/campaign-plans'){const db=await readDb();return sendJson(res,200,{campaignPlans:buildCampaignPlans(db)});}
+  const campaignMatch=url.pathname.match(/^\/api\/campaign-plans\/([^/]+)$/);
+  if(req.method==='GET'&&campaignMatch){const db=await readDb();const plan=buildCampaignPlans(db).find(item=>item.id===campaignMatch[1]);if(!plan)return sendJson(res,404,{error:'Campaign plan not found'});return sendJson(res,200,{campaignPlan:plan});}
   if(req.method==='GET'&&url.pathname==='/api/decisions'){const db=await readDb();return sendJson(res,200,{decisionBriefs:db.decisionBriefs||[],executiveDecisions:db.executiveDecisions||[]});}
   const decisionMatch=url.pathname.match(/^\/api\/decisions\/([^/]+)$/);
   if(req.method==='GET'&&decisionMatch){const db=await readDb();const brief=(db.decisionBriefs||[]).find(item=>item.id===decisionMatch[1]);if(!brief)return sendJson(res,404,{error:'Decision brief not found'});const decisions=(db.executiveDecisions||[]).filter(item=>item.briefId===brief.id);return sendJson(res,200,{brief,decisions});}
