@@ -20,3 +20,10 @@
 .storyCreate { border-top: 1px solid var(--line); padding-top: 14px; }
 .storyCreate summary { cursor: pointer; font-weight: 700; color: var(--ink); margin-bottom: 14px; }
 .storyCreate[open] summary { margin-bottom: 18px; }
+
+
+/* Sprint 4.1 — Narrative DNA */
+.narrativeDna{margin:20px 0;padding:20px;border:1px solid var(--border);border-radius:18px;background:linear-gradient(180deg,#fbfdff,#f5f8ff)}
+.dnaScores{display:grid;grid-template-columns:auto auto;gap:2px 10px;align-items:center;text-align:right}.dnaScores strong{font-size:1.2rem;color:var(--primary)}.dnaScores span{font-size:.72rem;color:var(--muted)}
+.dnaGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}.dnaGroup{padding:14px;border-radius:14px;background:#fff;border:1px solid var(--border)}.dnaGroup>span{display:block;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}.dnaGroup .chips{margin:0}.dnaGroup em{color:var(--muted);font-size:.85rem}
+@media(max-width:760px){.dnaGrid{grid-template-columns:1fr}.dnaScores{margin-top:10px;text-align:left}}

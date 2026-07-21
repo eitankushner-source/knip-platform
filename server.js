@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT || 3000);
 const DATA_FILE = path.resolve(__dirname, process.env.KNIP_DATA_FILE || './data/database.json');
 const SEED_FILE = path.resolve(__dirname, './data/seed.json');
-const VERSION = '0.3.0-alpha-institutional-learning-iteration-3.3.2';
+const VERSION = '0.4.0-alpha-narrative-dna-iteration-4.1';
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
 
 async function ensureDatabase() {
@@ -70,6 +70,60 @@ function scoreSignals(story, evidence) {
   const confidence = clamp(completeness*.42 + credibility*.38 + Math.max(0,100-risk)*.20);
   return { evidenceCount, sourceCount, completeness, credibility, humanImpact, strategicValue, opportunity, risk, confidence };
 }
+
+function uniqueMatches(text, catalog) {
+  const lower = text.toLowerCase();
+  return catalog.filter(([label, terms]) => terms.some(term => lower.includes(term))).map(([label]) => label);
+}
+function buildNarrativeDna(story, evidence, scores, combined) {
+  const humanValues = uniqueMatches(combined, [
+    ['Innovation',['innovation','technology','solution','research','science']],
+    ['Sustainability',['sustainability','water','climate','drought','environment','agriculture']],
+    ['Community',['community','family','local','volunteer','together']],
+    ['Compassion',['care','patient','humanitarian','support','help']],
+    ['Education',['student','school','education','learning']],
+    ['Resilience',['resilience','recovery','emergency','preparedness','drought']],
+    ['Equality',['equality','access','inclusive','diversity']]
+  ]);
+  const emotions = uniqueMatches(combined, [
+    ['Hope',['hope','helps','solution','future','improve']],
+    ['Empathy',['family','patient','farmer','child','livelihood']],
+    ['Optimism',['innovation','opportunity','success','growth']],
+    ['Trust',['evidence','verified','research','independent']],
+    ['Inspiration',['transform','breakthrough','resilience','impact']],
+    ['Gratitude',['thank','gratitude','appreciation']]
+  ]);
+  const themes = uniqueMatches(combined, [
+    ['Water',['water','irrigation']],['Agriculture',['farmer','agriculture','crop']],
+    ['Climate Resilience',['climate','drought','resilience']],['Health',['health','medical','patient']],
+    ['Technology',['technology','innovation','startup','software']],['Education',['education','school','student']],
+    ['Humanitarian Impact',['humanitarian','aid','relief']],['Emergency Response',['emergency','first responder','rescue']],
+    ['Diversity',['diversity','coexistence','inclusive']],['Science',['science','research','academic']]
+  ]);
+  const beneficiaries = uniqueMatches(combined, [
+    ['Farmers',['farmer','agriculture','crop']],['Children',['child','children']],['Patients',['patient','medical']],
+    ['Students',['student','school']],['First responders',['first responder','emergency worker']],
+    ['Entrepreneurs',['entrepreneur','startup']],['Local communities',['community','local']],['Families',['family','livelihood']]
+  ]);
+  const evidenceQuality = clamp(scores.credibility * .65 + scores.completeness * .35);
+  const narrativeStrength = clamp(scores.humanImpact * .30 + scores.strategicValue * .25 + evidenceQuality * .25 + (100 - scores.risk) * .20);
+  const riskLevel = scores.risk >= 65 ? 'High' : scores.risk >= 40 ? 'Moderate' : 'Low';
+  const trustSignals = [
+    ...(scores.sourceCount > 1 ? ['Multiple independent sources'] : []),
+    ...(evidence.some(item => Number(item.reliability || 0) >= 75) ? ['High-reliability evidence'] : []),
+    ...(story.author ? ['Named author or witness'] : []),
+    ...(evidence.some(item => /interview|testimony/i.test(item.sourceType || item.title || '')) ? ['Direct testimony'] : [])
+  ];
+  return {
+    humanValues: humanValues.length ? humanValues : ['Human impact'],
+    emotionalSignals: emotions.length ? emotions : ['Curiosity'],
+    themes: themes.length ? themes : ['Human Impact'],
+    beneficiaries: beneficiaries.length ? beneficiaries : ['Local communities'],
+    trustSignals, evidenceQuality, narrativeStrength, strategicRisk: riskLevel,
+    scoring: { humanImpact:scores.humanImpact, emotionalResonance:clamp(45 + emotions.length*9 + scores.humanImpact*.25), evidenceQuality, credibility:scores.credibility, novelty:clamp(55 + (story.tags?.length||0)*5), relevance:scores.strategicValue, clarity:scores.completeness }
+  };
+}
+
 function matchAudiences(story, analysis, audiences) {
   const text = `${story.title} ${story.summary} ${story.fullNarrative || ''} ${analysis.category} ${analysis.keywords.join(' ')}`.toLowerCase();
   return audiences.map(audience => {
@@ -88,9 +142,10 @@ function matchAudiences(story, analysis, audiences) {
 function analyzeStory(story, evidence, audiences) {
   const combined = `${story.title} ${story.summary} ${story.fullNarrative || ''} ${evidence.map(e=>`${e.title} ${e.claim}`).join(' ')}`;
   const scores = scoreSignals(story,evidence);
+  const narrativeDna = buildNarrativeDna(story, evidence, scores, combined);
   const analysis = {
     id:`analysis_${crypto.randomUUID()}`, storyId:story.id, category:classify(combined), keywords:keywords(combined),
-    ...scores, summary:story.summary || `A story concerning ${story.title}.`,
+    ...scores, narrativeDna, summary:story.summary || `A story concerning ${story.title}.`,
     strengths:[
       ...(scores.humanImpact>=70 ? ['Strong, relatable human impact'] : []),
       ...(scores.sourceCount>1 ? ['Multiple distinct sources support review'] : []),
@@ -113,7 +168,7 @@ function analyzeStory(story, evidence, audiences) {
       why:`The recommendation balances evidence completeness (${scores.completeness}%), credibility (${scores.credibility}%), strategic value (${scores.strategicValue}%), human impact (${scores.humanImpact}%), and risk (${scores.risk}%).`,
       improve:scores.sourceCount<2?'Add another independent source and a measurable outcome.':'Validate audience fit through human review and small-scale message testing.'
     },
-    model:'KNIP deterministic Alpha analyzer v2', createdAt:new Date().toISOString()
+    model:'KNIP Narrative DNA deterministic analyzer v1', createdAt:new Date().toISOString()
   };
   analysis.audienceMatches = matchAudiences(story,analysis,audiences||[]);
   return analysis;
