@@ -24,3 +24,7 @@ KNIP now converts Narrative DNA into explainable audience recommendations. Each 
 
 ## Sprint 7.2 — AI Campaign Strategist
 Campaign Planner with Ruby strategic recommendations, objectives, risks, framing, channels, messengers, dependencies, budgets, complexity and explainability.
+
+
+### Sprint 8 — Institutional Learning Engine
+KNIP now captures decisions, campaign outcomes, reusable patterns, and lessons learned so future recommendations can be grounded in organizational memory.
