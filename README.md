@@ -28,3 +28,7 @@ Campaign Planner with Ruby strategic recommendations, objectives, risks, framing
 
 ### Sprint 8 — Institutional Learning Engine
 KNIP now captures decisions, campaign outcomes, reusable patterns, and lessons learned so future recommendations can be grounded in organizational memory.
+
+
+## Sprint 9 — AI Advisory Board
+KNIP now compares Shani, Ruby, Amit, and CTA perspectives, identifies consensus and tensions, and produces a synthesized recommendation while preserving human executive authority.

@@ -22,6 +22,7 @@ const routeConfig = {
   executive: { title: 'Executive Decision Center', eyebrow: 'EXECUTIVE WORKSPACE' },
   stories: { title: 'Story Repository', eyebrow: 'STORY INTELLIGENCE' },
   decisions: { title: 'Decision Center', eyebrow: 'STRATEGIC DECISIONS' },
+  advisory: { title: 'AI Advisory Board', eyebrow: 'EXECUTIVE INTELLIGENCE' },
   audiences: { title: 'Audience Intelligence', eyebrow: 'COMMUNITY INTELLIGENCE' },
   campaigns: { title: 'Campaign Lab', eyebrow: 'CAMPAIGN DEVELOPMENT' },
   research: { title: 'Research Archive', eyebrow: 'KNOWLEDGE REPOSITORY' },
@@ -178,16 +179,23 @@ function storyRepositoryTemplate() {
   </section>`;
 }
 
+
+function advisoryBoardTemplate(){return `<section class="advisoryWorkspace"><aside class="panel advisoryQueue"><div class="sectionHeader"><div><p class="eyebrow dark">ADVISORY SESSIONS</p><h3>Executive questions</h3></div><span class="liveDot">Live</span></div><div id="advisorySessions"><p>Loading advisory board…</p></div></aside><section id="advisoryDetail" class="panel advisoryDetail"><div class="empty"><h3>Select an advisory session</h3><p>Compare knowledge, strategy, and operations perspectives before recording an executive decision.</p></div></section></section>`;}
+function advisorBoardCard(advisor){const tone=advisor.name==='Ruby'?'ruby':advisor.name==='Shani'?'shani':advisor.name==='Amit'?'amit':'cta';return `<article class="boardAdvisor ${tone}"><div class="boardAdvisorHead"><span class="avatar">${esc(advisor.name[0])}</span><div><h4>${esc(advisor.name)}</h4><small>${esc(advisor.role)}</small></div><span class="position">${esc(advisor.position.replaceAll('_',' '))}</span></div><p>${esc(advisor.assessment)}</p><div class="confidenceLine"><span>Confidence</span><i><b style="width:${advisor.confidence}%"></b></i><strong>${advisor.confidence}%</strong></div></article>`;}
+async function loadAdvisoryBoard(preferredId){const {sessions}=await api('/api/advisory-board');const id=preferredId||sessions[0]?.briefId;$('#advisorySessions').innerHTML=sessions.map(s=>`<button class="advisorySession ${s.briefId===id?'selected':''}" data-session="${esc(s.briefId)}"><small>${esc(s.consensus)}</small><strong>${esc(s.title)}</strong><span>${esc(s.recommendation)} · ${s.confidence}%</span></button>`).join('')||'<p>No advisory sessions.</p>';document.querySelectorAll('[data-session]').forEach(b=>b.onclick=()=>{location.hash=`#/advisory/${b.dataset.session}`;loadAdvisoryBoard(b.dataset.session)});if(id)await renderAdvisorySession(id);}
+async function renderAdvisorySession(id){const {session}=await api(`/api/advisory-board/${id}`);document.querySelectorAll('[data-session]').forEach(b=>b.classList.toggle('selected',b.dataset.session===id));$('#advisoryDetail').innerHTML=`<div class="advisoryHero"><div><p class="eyebrow dark">AI EXECUTIVE ADVISORY BOARD</p><h3>${esc(session.executiveQuestion)}</h3><p>Target audience: <strong>${esc(session.audience)}</strong></p></div><div class="consensusBlock"><small>${esc(session.consensus)}</small><strong>${esc(session.recommendation)}</strong><span>${session.confidence}% confidence</span></div></div><section class="boardGrid">${session.advisors.map(advisorBoardCard).join('')}</section><section class="synthesisGrid"><article><p class="eyebrow dark">AREAS OF AGREEMENT</p><h4>Where the board aligns</h4><ul>${session.agreements.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></article><article><p class="eyebrow dark">AREAS OF TENSION</p><h4>What the executive should weigh</h4><ul>${session.disagreements.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></article></section><section class="executiveSynthesis"><div><p class="eyebrow dark">SYNTHESIZED RECOMMENDATION</p><h3>${esc(session.recommendation)}</h3><p>Advance only after the board's shared conditions are satisfied. Human executive authority remains final.</p></div><div><h4>Conditions</h4><ul>${session.conditions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><button class="primaryAction" data-open-brief="${esc(session.briefId)}">Open decision brief</button></section>`;document.querySelector('[data-open-brief]').onclick=()=>openDecision(session.briefId);}
+
 async function renderRoute() {
   const route = currentRoute();
   setActiveNavigation(route);
   const content = $('#appContent');
-  content.innerHTML = route === 'executive' ? executiveTemplate() : route === 'stories' ? storyRepositoryTemplate() : route === 'decisions' ? decisionCenterTemplate() : route === 'audiences' ? audienceIntelligenceTemplate() : route === 'campaigns' ? campaignPlannerTemplate() : route === 'learning' ? learningWorkspaceTemplate() : comingSoonTemplate(route);
+  content.innerHTML = route === 'executive' ? executiveTemplate() : route === 'stories' ? storyRepositoryTemplate() : route === 'decisions' ? decisionCenterTemplate() : route === 'advisory' ? advisoryBoardTemplate() : route === 'audiences' ? audienceIntelligenceTemplate() : route === 'campaigns' ? campaignPlannerTemplate() : route === 'learning' ? learningWorkspaceTemplate() : comingSoonTemplate(route);
   content.focus();
   document.querySelectorAll('[data-go]').forEach(button => button.onclick = () => { location.hash = `#/${button.dataset.go}`; });
   document.querySelectorAll('[data-brief]').forEach(button => button.onclick = () => openDecision(button.dataset.brief));
   if (route === 'stories') await loadStories();
   if (route === 'decisions') { const id = location.hash.split('/')[2]; await loadDecisions(id); }
+  if (route === 'advisory') { const id = location.hash.split('/')[2]; await loadAdvisoryBoard(id); }
   if (route === 'audiences') await loadAudienceIntelligence();
   if (route === 'campaigns') await loadCampaignPlanner();
   if (route === 'learning') await loadLearningRecords();
