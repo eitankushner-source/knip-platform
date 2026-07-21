@@ -66,9 +66,9 @@ function executiveTemplate() {
       <div class="sectionHeader"><div><p class="eyebrow dark">DECISION QUEUE</p><h3>Items requiring executive attention</h3></div><button class="textButton" type="button" data-go="decisions">View all</button></div>
       <div class="placeholderTable">
         <div class="tableRow tableHead"><span>Priority</span><span>Story</span><span>Recommendation</span><span>Confidence</span></div>
-        ${decisionRow('High', 'Kenyan heart surgeons', 'Publish', '94%')}
-        ${decisionRow('Medium', 'Druze first responders', 'Research', '82%')}
-        ${decisionRow('Normal', 'Israeli climate startup', 'Hold', '79%')}
+        ${decisionRow('brief_001', 'High', 'Israeli water technology', 'Approve', '92%')}
+        ${decisionRow('brief_002', 'Medium', 'Druze first responders', 'Research', '82%')}
+        ${decisionRow('brief_003', 'Normal', 'Israeli climate startup', 'Hold', '79%')}
       </div>
     </article>
     <article class="panel">
@@ -100,8 +100,8 @@ function executiveTemplate() {
 function kpiCard(label, value, detail, tone) {
   return `<article class="kpiCard"><span>${esc(label)}</span><strong>${esc(value)}</strong><small class="${tone}">${esc(detail)}</small></article>`;
 }
-function decisionRow(priority, story, recommendation, confidence) {
-  return `<button class="tableRow decisionPreview" type="button"><span><i class="priority ${priority.toLowerCase()}"></i>${priority}</span><strong>${esc(story)}</strong><span>${esc(recommendation)}</span><span>${esc(confidence)}</span></button>`;
+function decisionRow(id, priority, story, recommendation, confidence) {
+  return `<button class="tableRow decisionPreview" type="button" data-brief="${esc(id)}"><span><i class="priority ${priority.toLowerCase()}"></i>${priority}</span><strong>${esc(story)}</strong><span>${esc(recommendation)}</span><span>${esc(confidence)}</span></button>`;
 }
 function pipelineStage(label, count) {
   return `<div><span>${esc(label)}</span><div class="pipelineBar"><i style="width:${Math.min(100, count * 4)}%"></i></div><strong>${count}</strong></div>`;
@@ -111,6 +111,34 @@ function advisor(name, activity, role) {
 }
 function timelineItem(time, action, subject) {
   return `<div class="timelineItem"><time>${time}</time><span></span><div><strong>${esc(action)}</strong><p>${esc(subject)}</p></div></div>`;
+}
+
+
+function decisionCenterTemplate() {
+  return `<section class="decisionWorkspace"><aside class="panel decisionQueuePanel"><div class="sectionHeader"><div><p class="eyebrow dark">DECISION QUEUE</p><h3>Executive attention</h3></div><span class="badge">Live</span></div><div id="decisionQueue" class="decisionQueue"><p>Loading briefs…</p></div></aside><section id="decisionBrief" class="panel decisionBrief"><div class="empty"><h3>Select a decision brief</h3><p>Review evidence, advisor positions, explainability, and record an executive decision.</p></div></section></section>`;
+}
+function priorityLabel(value='NORMAL') { return value.charAt(0)+value.slice(1).toLowerCase(); }
+async function loadDecisions(preferredId) {
+  const { decisionBriefs } = await api('/api/decisions');
+  $('#decisionQueue').innerHTML = decisionBriefs.map(brief => `<button class="decisionCard ${preferredId===brief.id?'selected':''}" data-decision-id="${esc(brief.id)}"><span class="storyTop"><span><i class="priority ${priorityLabel(brief.priority).toLowerCase()}"></i><strong>${esc(brief.title)}</strong></span><span class="badge">${esc(brief.status.replaceAll('_',' '))}</span></span><p>${esc(brief.audience)}</p><div class="decisionMeta"><span>${esc(brief.recommendation)}</span><strong>${brief.confidence}% confidence</strong><span>Due ${esc(brief.dueDate)}</span></div></button>`).join('') || '<p>No decision briefs.</p>';
+  document.querySelectorAll('[data-decision-id]').forEach(button => button.onclick=()=>openDecision(button.dataset.decisionId));
+  if (preferredId && decisionBriefs.some(item=>item.id===preferredId)) await renderDecisionBrief(preferredId);
+}
+async function openDecision(id) { location.hash=`#/decisions/${id}`; await loadDecisions(id); }
+function advisorPosition(advisor) { return `<article class="advisorOpinion"><div class="advisorOpinionHead"><span class="avatar">${esc(advisor.name[0])}</span><div><strong>${esc(advisor.name)}</strong><small>${esc(advisor.role)}</small></div><span class="position">${esc(advisor.position.replaceAll('_',' '))}</span></div><p>${esc(advisor.assessment)}</p><div class="confidenceLine"><span>Confidence</span><i><b style="width:${advisor.confidence}%"></b></i><strong>${advisor.confidence}%</strong></div></article>`; }
+function driverBar(driver) { return `<div class="driver"><span>${esc(driver.label)}</span><i><b style="width:${driver.value}%"></b></i><strong>${driver.value}%</strong></div>`; }
+async function renderDecisionBrief(id) {
+  const { brief, decisions } = await api(`/api/decisions/${id}`);
+  document.querySelectorAll('[data-decision-id]').forEach(button=>button.classList.toggle('selected',button.dataset.decisionId===id));
+  $('#decisionBrief').innerHTML = `<div class="briefHeader"><div><p class="eyebrow dark">EXECUTIVE DECISION BRIEF</p><h3>${esc(brief.title)}</h3><div class="briefTags"><span class="badge">${esc(priorityLabel(brief.priority))} priority</span><span>${esc(brief.audience)}</span><span>Owner: ${esc(brief.owner)}</span><span>Due: ${esc(brief.dueDate)}</span></div></div><div class="recommendationBlock"><small>AI recommendation</small><strong>${esc(brief.recommendation)}</strong><span>${brief.confidence}% confidence</span></div></div>
+  <section class="briefSection"><h4>Executive summary</h4><p class="lead">${esc(brief.executiveSummary)}</p></section>
+  <section class="briefSection"><h4>Strategic assessment</h4><p>${esc(brief.strategicAssessment)}</p><div class="opportunityRisk"><div><h5>Opportunities</h5><ul>${brief.opportunities.map(item=>`<li>${esc(item)}</li>`).join('')}</ul></div><div><h5>Risks</h5><ul>${brief.risks.map(item=>`<li>${esc(item)}</li>`).join('')}</ul></div></div></section>
+  <section class="briefSection"><div class="sectionHeader"><div><p class="eyebrow dark">AI ADVISORY BOARD</p><h4>Four perspectives, one explainable recommendation</h4></div></div><div class="advisorBoard">${brief.advisors.map(advisorPosition).join('')}</div></section>
+  <section class="briefSection explainabilityPanel"><div><p class="eyebrow dark">EXPLAINABILITY</p><h4>Why KNIP recommends ${esc(brief.recommendation.toLowerCase())}</h4><p>${esc(brief.explainability.why)}</p><h5>Approval conditions</h5><ul>${brief.explainability.conditions.map(item=>`<li>${esc(item)}</li>`).join('')}</ul></div><div class="drivers">${brief.explainability.drivers.map(driverBar).join('')}</div></section>
+  <section class="briefSection"><h4>Evidence reviewed</h4><div class="briefEvidence">${brief.evidence.map(item=>`<article><div><strong>${esc(item.title)}</strong><span>${item.reliability}% reliable</span></div><p>${esc(item.claim)}</p></article>`).join('')}</div></section>
+  <section class="decisionActionPanel"><div><p class="eyebrow dark">HUMAN AUTHORITY</p><h4>Record executive decision</h4><p>AI advises. The executive decides. Every action is preserved in the audit trail.</p><textarea id="decisionNote" rows="2" placeholder="Optional decision rationale or instructions"></textarea></div><div class="decisionButtons"><button data-action="APPROVE">Approve</button><button class="secondary" data-action="RESEARCH">Research</button><button class="secondary" data-action="ESCALATE">Escalate</button><button class="rejectAction" data-action="REJECT">Reject</button><button class="archiveAction" data-action="ARCHIVE">Archive</button></div><p id="decisionMessage" class="message"></p></section>
+  <section class="briefSection"><h4>Decision history</h4><div class="historyList">${brief.history.map(item=>`<div><time>${new Date(item.at).toLocaleString()}</time><strong>${esc(item.actor)}</strong><span>${esc(item.action)}</span></div>`).join('')}${decisions.length?'':''}</div></section>`;
+  document.querySelectorAll('[data-action]').forEach(button=>button.onclick=async()=>{ const action=button.dataset.action; if(!confirm(`Record ${action.toLowerCase()} decision?`))return; const message=$('#decisionMessage'); message.textContent='Recording decision…'; try{await api(`/api/decisions/${id}/actions`,{method:'POST',body:JSON.stringify({action,note:$('#decisionNote').value})});message.textContent='Decision recorded.';await loadDecisions(id);}catch(error){message.textContent=error.message;} });
 }
 
 function comingSoonTemplate(route) {
@@ -133,10 +161,12 @@ async function renderRoute() {
   const route = currentRoute();
   setActiveNavigation(route);
   const content = $('#appContent');
-  content.innerHTML = route === 'executive' ? executiveTemplate() : route === 'stories' ? storyRepositoryTemplate() : comingSoonTemplate(route);
+  content.innerHTML = route === 'executive' ? executiveTemplate() : route === 'stories' ? storyRepositoryTemplate() : route === 'decisions' ? decisionCenterTemplate() : comingSoonTemplate(route);
   content.focus();
   document.querySelectorAll('[data-go]').forEach(button => button.onclick = () => { location.hash = `#/${button.dataset.go}`; });
+  document.querySelectorAll('[data-brief]').forEach(button => button.onclick = () => openDecision(button.dataset.brief));
   if (route === 'stories') await loadStories();
+  if (route === 'decisions') { const id = location.hash.split('/')[2]; await loadDecisions(id); }
 }
 
 async function loadSystemHealth() {

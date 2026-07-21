@@ -1,3 +1,11 @@
+# Release 0.3 — Iteration 3.2
+
+- Functional Executive Decision Center and queue
+- Full Executive Decision Brief
+- AI Advisory Board perspectives: Shani, Ruby, Amit, CTA
+- Evidence and explainability panels
+- Human decision actions with audit history
+
 # KNIP v0.3.0 Alpha — Story Intelligence Workspace
 
 ## Added
@@ -12,7 +20,7 @@
 ## Notes
 This release remains local-first and deterministic. No external LLM or cloud service is required.
 
-## 0.3.0-alpha-executive-workspace-iteration-3.1
+## 0.3.0-alpha-executive-workspace-iteration-3.2
 
 - Added the Executive Workspace application shell.
 - Added persistent left navigation aligned with the approved KNIP architecture.
