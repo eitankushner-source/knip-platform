@@ -1,33 +1,18 @@
-# KNIP Platform
+# KNIP — Sprint 4.1 Narrative DNA Analyzer
 
-**Version:** 0.2.0 Alpha — Story Intelligence
+KNIP transforms authentic stories into explainable strategic intelligence. Sprint 4.1 adds a deterministic Narrative DNA engine that extracts human values, emotional signals, themes, beneficiaries, trust signals, evidence quality, narrative strength, and strategic risk.
 
-KNIP is an AI-native decision-intelligence platform for narrative strategy. This release implements the first vertical slice: story intake, evidence cataloguing, transparent first-pass analysis, persistent local data, and audit logging.
+## Run
 
-## Windows 11 quick start
-
-1. Install and open Docker Desktop.
-2. Double-click `Run-KNIP.bat`.
-3. Open `http://localhost:3000`.
-
-## Verify locally
-
-```bash
-npm run verify
+```powershell
+npm.cmd install
+npm.cmd start
 ```
 
-## Current analysis model
+Open `http://localhost:3000`, choose a story, add evidence, and click **Run analysis**.
 
-The Alpha analyzer is deterministic and local. It provides classification, keywords, evidence completeness, reliability, confidence, risks, and a next-step recommendation. It does **not** call an external LLM yet; provider-backed AI orchestration will be added in a later milestone.
+## Verify
 
-## Data
-
-Runtime data is stored in `data/database.json` and is ignored by Git. `data/seed.json` remains the reproducible demo baseline.
-
-## Sprint 3 — Iteration 3.1
-
-The default route is now `#/executive`, which presents the Executive Decision Center shell. The existing Story Intelligence capability remains available at `#/stories`. Other approved modules have active navigation routes and implementation placeholders for subsequent Sprint 3 iterations.
-
-
-### Sprint 3.3.1
-Institutional Learning records preserve decisions, advisor positions, outcomes, and lessons for future organizational use.
+```powershell
+npm.cmd run verify
+```
