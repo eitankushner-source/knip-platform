@@ -32,3 +32,9 @@ This release remains deterministic. Live LLM orchestration is planned for a late
 - Added institutional learning dashboard and organizational memory metrics.
 - Added reusable pattern detection, learning insights, campaign outcome metrics, and confidence evolution.
 - Added learning intelligence API and seeded learning records.
+
+
+## 0.9.0-alpha — AI Advisory Board
+- Added advisory sessions and multi-role executive perspectives.
+- Added agreement, disagreement, confidence, and synthesis panels.
+- Added advisory-board API endpoints and automated tests.

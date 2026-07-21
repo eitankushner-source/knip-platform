@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT || 3000);
 const DATA_FILE = path.resolve(__dirname, process.env.KNIP_DATA_FILE || './data/database.json');
 const SEED_FILE = path.resolve(__dirname, './data/seed.json');
-const VERSION = '0.8.0-alpha-institutional-learning-engine';
+const VERSION = '0.9.0-alpha-ai-advisory-board';
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
 
 async function ensureDatabase() {
@@ -212,6 +212,26 @@ async function serveStatic(req,res) {
   catch { return false; }
 }
 
+
+function buildAdvisorySynthesis(brief){
+  const advisors=brief.advisors||[];
+  const core=advisors.filter(a=>['Shani','Ruby','Amit'].includes(a.name));
+  const avg=Math.round(core.reduce((sum,a)=>sum+Number(a.confidence||0),0)/Math.max(1,core.length));
+  const positive=new Set(['APPROVE','ADVANCE','READY','READY_WITH_CONDITIONS','RELIABLE','PROCEED']);
+  const supportive=core.filter(a=>positive.has(a.position)).length;
+  const consensus=supportive===core.length?'STRONG CONSENSUS':supportive>=2?'QUALIFIED CONSENSUS':'MIXED VIEW';
+  const agreements=[];
+  if(core.length) agreements.push('The story has meaningful strategic potential and a credible human beneficiary.');
+  if(core.every(a=>Number(a.confidence||0)>=75)) agreements.push('All advisors express decision-grade confidence in their assessment.');
+  if(supportive>=2) agreements.push('A majority supports advancement, with safeguards before public activation.');
+  const disagreements=[];
+  const positions=[...new Set(core.map(a=>a.position))];
+  if(positions.length>1) disagreements.push('Advisors differ on readiness: strategy favors movement while knowledge and operations require conditions.');
+  disagreements.push('Evidence completeness and operational readiness carry different weight across the advisory roles.');
+  const conditions=[...(brief.explainability?.conditions||[])];
+  const recommendation=supportive>=2?'APPROVE WITH CONDITIONS':supportive===1?'RESEARCH MORE':'HOLD';
+  return {briefId:brief.id,title:brief.title,audience:brief.audience,advisors,consensus,agreements,disagreements,conditions,recommendation,confidence:Math.round((avg+Number(brief.confidence||avg))/2),executiveQuestion:`Should KNIP advance “${brief.title}” for ${brief.audience}?`};
+}
 function buildLearningIntelligence(db) {
   const records = db.learningRecords || [];
   const completed = records.filter(r => r.outcome && r.outcome !== 'PENDING');
@@ -254,6 +274,9 @@ export async function handleRequest(req,res) {
   const campaignMatch=url.pathname.match(/^\/api\/campaign-plans\/([^/]+)$/);
   if(req.method==='GET'&&campaignMatch){const db=await readDb();const plan=buildCampaignPlans(db).find(item=>item.id===campaignMatch[1]);if(!plan)return sendJson(res,404,{error:'Campaign plan not found'});return sendJson(res,200,{campaignPlan:plan});}
   if(req.method==='GET'&&url.pathname==='/api/decisions'){const db=await readDb();return sendJson(res,200,{decisionBriefs:db.decisionBriefs||[],executiveDecisions:db.executiveDecisions||[]});}
+  if(req.method==='GET'&&url.pathname==='/api/advisory-board'){const db=await readDb();return sendJson(res,200,{sessions:(db.decisionBriefs||[]).map(buildAdvisorySynthesis)});}
+  const advisoryMatch=url.pathname.match(/^\/api\/advisory-board\/([^/]+)$/);
+  if(req.method==='GET'&&advisoryMatch){const db=await readDb();const brief=(db.decisionBriefs||[]).find(item=>item.id===advisoryMatch[1]);if(!brief)return sendJson(res,404,{error:'Advisory session not found'});return sendJson(res,200,{session:buildAdvisorySynthesis(brief)});}
   const decisionMatch=url.pathname.match(/^\/api\/decisions\/([^/]+)$/);
   if(req.method==='GET'&&decisionMatch){const db=await readDb();const brief=(db.decisionBriefs||[]).find(item=>item.id===decisionMatch[1]);if(!brief)return sendJson(res,404,{error:'Decision brief not found'});const decisions=(db.executiveDecisions||[]).filter(item=>item.briefId===brief.id);return sendJson(res,200,{brief,decisions});}
   const decisionActionMatch=url.pathname.match(/^\/api\/decisions\/([^/]+)\/actions$/);

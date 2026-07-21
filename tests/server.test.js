@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {handleRequest} from '../server.js';
 function res(){return{statusCode:0,headers:{},body:'',writeHead(s,h){this.statusCode=s;this.headers=h},end(c=''){this.body+=c}}}
 async function call(method,url,body){const r=res();const req={method,url,headers:{host:'localhost'},async *[Symbol.asyncIterator](){if(body)yield Buffer.from(JSON.stringify(body))}};await handleRequest(req,r);return{status:r.statusCode,payload:JSON.parse(r.body)}}
-test('health returns Sprint 8 version',async()=>{const r=await call('GET','/api/health');assert.equal(r.status,200);assert.equal(r.payload.version,'0.8.0-alpha-institutional-learning-engine')});
+test('health returns Sprint 9 version',async()=>{const r=await call('GET','/api/health');assert.equal(r.status,200);assert.equal(r.payload.version,'0.9.0-alpha-ai-advisory-board')});
 test('story list includes evidence and analysis summary',async()=>{const r=await call('GET','/api/stories');assert.equal(r.status,200);assert.ok(Array.isArray(r.payload.stories));assert.ok('evidenceCount' in r.payload.stories[0])});
 test('audience profiles are available',async()=>{const r=await call('GET','/api/audiences');assert.equal(r.status,200);assert.ok(r.payload.audiences.length>=5)});
 test('missing story returns 404',async()=>{const r=await call('GET','/api/stories/not-real');assert.equal(r.status,404)});
@@ -105,4 +105,22 @@ test('Institutional Learning workspace includes confidence evolution and outcome
   assert.match(source,/CONFIDENCE EVOLUTION/);
   assert.match(source,/What KNIP now knows/);
   assert.match(source,/Positive sentiment/);
+});
+
+
+test('AI Advisory Board synthesizes multiple executive perspectives', async () => {
+  const response=await call('GET','/api/advisory-board/brief_001');
+  assert.equal(response.status,200);
+  assert.ok(response.payload.session.advisors.length>=3);
+  assert.ok(response.payload.session.agreements.length>=1);
+  assert.ok(response.payload.session.disagreements.length>=1);
+  assert.match(response.payload.session.recommendation,/APPROVE|RESEARCH|HOLD/);
+});
+
+test('AI Advisory Board workspace is wired into navigation', async () => {
+  const {readFile}=await import('node:fs/promises');
+  const source=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.match(source,/AI EXECUTIVE ADVISORY BOARD/);
+  assert.match(source,/AREAS OF AGREEMENT/);
+  assert.match(source,/SYNTHESIZED RECOMMENDATION/);
 });
