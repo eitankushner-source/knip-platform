@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT || 3000);
 const DATA_FILE = path.resolve(__dirname, process.env.KNIP_DATA_FILE || './data/database.json');
 const SEED_FILE = path.resolve(__dirname, './data/seed.json');
-const VERSION = '0.3.0-alpha-story-intelligence-workspace';
+const VERSION = '0.3.0-alpha-executive-workspace-iteration-3.1';
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
 
 async function ensureDatabase() {
