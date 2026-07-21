@@ -11,3 +11,13 @@
 
 ## Notes
 This release remains local-first and deterministic. No external LLM or cloud service is required.
+
+## 0.3.0-alpha-executive-workspace-iteration-3.1
+
+- Added the Executive Workspace application shell.
+- Added persistent left navigation aligned with the approved KNIP architecture.
+- Added the top command bar, executive identity area, and system status.
+- Added hash-based client routing for all planned platform modules.
+- Added the Executive Decision Center dashboard shell with seeded KPI, queue, pipeline, AI activity, and timeline panels.
+- Preserved the complete Story Intelligence Workspace under the Story Repository route.
+- Added responsive desktop, tablet, and mobile navigation behavior.

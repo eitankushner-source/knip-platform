@@ -23,3 +23,7 @@ The Alpha analyzer is deterministic and local. It provides classification, keywo
 ## Data
 
 Runtime data is stored in `data/database.json` and is ignored by Git. `data/seed.json` remains the reproducible demo baseline.
+
+## Sprint 3 — Iteration 3.1
+
+The default route is now `#/executive`, which presents the Executive Decision Center shell. The existing Story Intelligence capability remains available at `#/stories`. Other approved modules have active navigation routes and implementation placeholders for subsequent Sprint 3 iterations.
