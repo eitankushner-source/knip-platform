@@ -27,3 +27,7 @@ Runtime data is stored in `data/database.json` and is ignored by Git. `data/seed
 ## Sprint 3 — Iteration 3.1
 
 The default route is now `#/executive`, which presents the Executive Decision Center shell. The existing Story Intelligence capability remains available at `#/stories`. Other approved modules have active navigation routes and implementation placeholders for subsequent Sprint 3 iterations.
+
+
+### Sprint 3.3.1
+Institutional Learning records preserve decisions, advisor positions, outcomes, and lessons for future organizational use.

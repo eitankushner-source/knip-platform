@@ -129,6 +129,7 @@ function advisorPosition(advisor) { return `<article class="advisorOpinion"><div
 function driverBar(driver) { return `<div class="driver"><span>${esc(driver.label)}</span><i><b style="width:${driver.value}%"></b></i><strong>${driver.value}%</strong></div>`; }
 async function renderDecisionBrief(id) {
   const { brief, decisions } = await api(`/api/decisions/${id}`);
+  let learningRecord=null;try{learningRecord=(await api(`/api/learning/${id}`)).learningRecord;}catch(error){if(!error.message.includes('Learning record not found'))throw error;}
   document.querySelectorAll('[data-decision-id]').forEach(button=>button.classList.toggle('selected',button.dataset.decisionId===id));
   $('#decisionBrief').innerHTML = `<div class="briefHeader"><div><p class="eyebrow dark">EXECUTIVE DECISION BRIEF</p><h3>${esc(brief.title)}</h3><div class="briefTags"><span class="badge">${esc(priorityLabel(brief.priority))} priority</span><span>${esc(brief.audience)}</span><span>Owner: ${esc(brief.owner)}</span><span>Due: ${esc(brief.dueDate)}</span></div></div><div class="recommendationBlock"><small>AI recommendation</small><strong>${esc(brief.recommendation)}</strong><span>${brief.confidence}% confidence</span></div></div>
   <section class="briefSection"><h4>Executive summary</h4><p class="lead">${esc(brief.executiveSummary)}</p></section>
@@ -137,10 +138,16 @@ async function renderDecisionBrief(id) {
   <section class="briefSection explainabilityPanel"><div><p class="eyebrow dark">EXPLAINABILITY</p><h4>Why KNIP recommends ${esc(brief.recommendation.toLowerCase())}</h4><p>${esc(brief.explainability.why)}</p><h5>Approval conditions</h5><ul>${brief.explainability.conditions.map(item=>`<li>${esc(item)}</li>`).join('')}</ul></div><div class="drivers">${brief.explainability.drivers.map(driverBar).join('')}</div></section>
   <section class="briefSection"><h4>Evidence reviewed</h4><div class="briefEvidence">${brief.evidence.map(item=>`<article><div><strong>${esc(item.title)}</strong><span>${item.reliability}% reliable</span></div><p>${esc(item.claim)}</p></article>`).join('')}</div></section>
   <section class="decisionActionPanel"><div><p class="eyebrow dark">HUMAN AUTHORITY</p><h4>Record executive decision</h4><p>AI advises. The executive decides. Every action is preserved in the audit trail.</p><textarea id="decisionNote" rows="2" placeholder="Optional decision rationale or instructions"></textarea></div><div class="decisionButtons"><button data-action="APPROVE">Approve</button><button class="secondary" data-action="RESEARCH">Research</button><button class="secondary" data-action="ESCALATE">Escalate</button><button class="rejectAction" data-action="REJECT">Reject</button><button class="archiveAction" data-action="ARCHIVE">Archive</button></div><p id="decisionMessage" class="message"></p></section>
+  ${learningPanel(learningRecord,brief)}
   <section class="briefSection"><h4>Decision history</h4><div class="historyList">${brief.history.map(item=>`<div><time>${new Date(item.at).toLocaleString()}</time><strong>${esc(item.actor)}</strong><span>${esc(item.action)}</span></div>`).join('')}${decisions.length?'':''}</div></section>`;
+  $('#saveLearning').onclick=async()=>{const message=$('#learningMessage');message.textContent='Saving learning record…';try{await api(`/api/learning/${id}`,{method:'PUT',body:JSON.stringify({outcome:$('#learningOutcome').value,lessonsLearned:$('#lessonsLearned').value})});message.textContent='Learning record saved.';await renderDecisionBrief(id);}catch(error){message.textContent=error.message;}};
   document.querySelectorAll('[data-action]').forEach(button=>button.onclick=async()=>{ const action=button.dataset.action; if(!confirm(`Record ${action.toLowerCase()} decision?`))return; const message=$('#decisionMessage'); message.textContent='Recording decision…'; try{await api(`/api/decisions/${id}/actions`,{method:'POST',body:JSON.stringify({action,note:$('#decisionNote').value})});message.textContent='Decision recorded.';await loadDecisions(id);}catch(error){message.textContent=error.message;} });
 }
 
+
+function learningWorkspaceTemplate(){return `<section class="page"><div class="sectionHeader"><div><p class="eyebrow dark">ORGANIZATIONAL MEMORY</p><h3>Institutional Learning</h3><p>Every executive decision becomes reusable organizational knowledge.</p></div></div><section id="learningRecords" class="learningGrid"><p>Loading learning records…</p></section></section>`;}
+async function loadLearningRecords(){const {learningRecords}=await api('/api/learning');$('#learningRecords').innerHTML=learningRecords.map(record=>`<article class="panel learningCard"><div class="sectionHeader"><div><p class="eyebrow dark">LEARNING RECORD</p><h4>${esc(record.storyTitle)}</h4></div><span class="badge">${esc(record.outcome)}</span></div><div class="learningMeta"><div><span>Decision</span><strong>${esc(record.decision)}</strong></div><div><span>Decision maker</span><strong>${esc(record.decisionMaker)}</strong></div><div><span>Decision date</span><strong>${record.decisionDate?new Date(record.decisionDate).toLocaleDateString():'Pending'}</strong></div></div><p><strong>Lessons learned:</strong> ${esc(record.lessonsLearned||'No lessons recorded yet.')}</p><button data-brief="${esc(record.briefId)}">Open decision brief</button></article>`).join('')||'<article class="panel empty"><h3>No learning records yet</h3><p>Record an executive decision to create the first learning record.</p></article>';document.querySelectorAll('[data-brief]').forEach(button=>button.onclick=()=>openDecision(button.dataset.brief));}
+function learningPanel(record,brief){const advisorEntries=Object.entries(record?.advisorRecommendations||Object.fromEntries((brief.advisors||[]).map(item=>[item.name,item.position])));return `<section class="briefSection institutionalPanel"><div class="sectionHeader"><div><p class="eyebrow dark">INSTITUTIONAL LEARNING</p><h4>Turn this decision into organizational memory</h4></div><span class="badge">${esc(record?.outcome||'PENDING')}</span></div><div class="learningMeta"><div><span>Decision status</span><strong>${esc(record?.decision||brief.status)}</strong></div><div><span>Decision maker</span><strong>${esc(record?.decisionMaker||'Pending')}</strong></div><div><span>Decision date</span><strong>${record?.decisionDate?new Date(record.decisionDate).toLocaleDateString():'Pending'}</strong></div></div><div class="advisorSnapshot">${advisorEntries.map(([name,position])=>`<span><strong>${esc(name)}</strong>${esc(String(position).replaceAll('_',' '))}</span>`).join('')}</div><label>Outcome<select id="learningOutcome"><option ${record?.outcome==='PENDING'?'selected':''}>PENDING</option><option ${record?.outcome==='SUCCESS'?'selected':''}>SUCCESS</option><option ${record?.outcome==='PARTIAL'?'selected':''}>PARTIAL</option><option ${record?.outcome==='NO_ACTION'?'selected':''}>NO_ACTION</option><option ${record?.outcome==='NEGATIVE'?'selected':''}>NEGATIVE</option></select></label><label>Lessons learned<textarea id="lessonsLearned" rows="3" placeholder="What should KNIP remember for future decisions?">${esc(record?.lessonsLearned||'')}</textarea></label><button id="saveLearning">Save learning record</button><p id="learningMessage" class="message"></p></section>`;}
 function comingSoonTemplate(route) {
   const config = routeConfig[route];
   return `<section class="page comingSoon"><div class="comingSoonIcon">◇</div><p class="eyebrow dark">SPRINT 3 FOUNDATION</p><h3>${esc(config.title)}</h3><p>The navigation route and executive workspace shell are now active. Functional implementation for this module follows in the next scheduled iteration.</p><button class="primaryAction" type="button" data-go="executive">Return to Executive Decision Center</button></section>`;
@@ -149,8 +156,9 @@ function comingSoonTemplate(route) {
 function storyRepositoryTemplate() {
   return `<section class="storyLayout">
     <aside class="panel repositoryPanel"><div class="sectionHeader"><div><p class="eyebrow dark">REPOSITORY</p><h3>Story intelligence</h3></div><button id="refresh" class="secondary">Refresh</button></div>
-      <form id="storyForm" class="compact"><div class="formGrid"><label class="wide">Title<input id="title" required maxlength="180"></label><label class="wide">Executive summary<textarea id="summary" rows="3"></textarea></label><label class="wide">Full narrative<textarea id="fullNarrative" rows="4"></textarea></label><label>Country<input id="country"></label><label>Location<input id="location"></label><label>Language<input id="language" value="English"></label><label>Source type<select id="sourceType"><option value="">Select</option><option>Citizen testimony</option><option>News</option><option>NGO</option><option>Academic</option><option>Government</option><option>Interview</option></select></label><label>Source organization<input id="source"></label><label>Original author<input id="author"></label><label class="wide">Tags (comma-separated)<input id="tags" placeholder="water, farming, resilience"></label></div><button type="submit">Save story</button><p id="formMessage" class="message"></p></form>
-      <div id="stories" class="cards"></div>
+      <div id="storyLoadState" class="notice compactNotice">Loading stories…</div>
+      <div id="stories" class="cards repositoryCards"></div>
+      <details class="storyCreate"><summary>Add a new story</summary><form id="storyForm" class="compact"><div class="formGrid"><label class="wide">Title<input id="title" required maxlength="180"></label><label class="wide">Executive summary<textarea id="summary" rows="3"></textarea></label><label class="wide">Full narrative<textarea id="fullNarrative" rows="4"></textarea></label><label>Country<input id="country"></label><label>Location<input id="location"></label><label>Language<input id="language" value="English"></label><label>Source type<select id="sourceType"><option value="">Select</option><option>Citizen testimony</option><option>News</option><option>NGO</option><option>Academic</option><option>Government</option><option>Interview</option></select></label><label>Source organization<input id="source"></label><label>Original author<input id="author"></label><label class="wide">Tags (comma-separated)<input id="tags" placeholder="water, farming, resilience"></label></div><button type="submit">Save story</button><p id="formMessage" class="message"></p></form></details>
     </aside>
     <section id="detail" class="panel detail"><div class="empty"><h3>Select a story</h3><p>Choose a story to review evidence, scores, audience matches, and explainability.</p></div></section>
     <section class="panel auditPanel"><div class="sectionHeader"><div><p class="eyebrow dark">GOVERNANCE</p><h3>Audit trail</h3></div><button id="reset" class="danger">Reset demo data</button></div><div id="audit" class="audit"></div></section>
@@ -161,12 +169,13 @@ async function renderRoute() {
   const route = currentRoute();
   setActiveNavigation(route);
   const content = $('#appContent');
-  content.innerHTML = route === 'executive' ? executiveTemplate() : route === 'stories' ? storyRepositoryTemplate() : route === 'decisions' ? decisionCenterTemplate() : comingSoonTemplate(route);
+  content.innerHTML = route === 'executive' ? executiveTemplate() : route === 'stories' ? storyRepositoryTemplate() : route === 'decisions' ? decisionCenterTemplate() : route === 'learning' ? learningWorkspaceTemplate() : comingSoonTemplate(route);
   content.focus();
   document.querySelectorAll('[data-go]').forEach(button => button.onclick = () => { location.hash = `#/${button.dataset.go}`; });
   document.querySelectorAll('[data-brief]').forEach(button => button.onclick = () => openDecision(button.dataset.brief));
   if (route === 'stories') await loadStories();
   if (route === 'decisions') { const id = location.hash.split('/')[2]; await loadDecisions(id); }
+  if (route === 'learning') await loadLearningRecords();
 }
 
 async function loadSystemHealth() {
@@ -179,14 +188,25 @@ async function loadSystemHealth() {
 }
 
 async function loadStories() {
-  const [storyData, auditData] = await Promise.all([api('/api/stories'), api('/api/audit')]);
-  $('#stories').innerHTML = storyData.stories.map(story => `<button class="storyCard ${selectedId === story.id ? 'selected' : ''}" data-id="${story.id}"><span class="storyTop"><strong>${esc(story.title)}</strong><span class="badge">${esc(story.status)}</span></span><small>${story.evidenceCount} evidence · ${story.latestAnalysis ? `${story.latestAnalysis.opportunity}% opportunity` : 'Not analyzed'}</small></button>`).join('') || '<p>No stories yet.</p>';
-  document.querySelectorAll('.storyCard').forEach(button => button.onclick = () => selectStory(button.dataset.id));
-  $('#audit').innerHTML = auditData.auditEvents.map(event => `<div class="auditRow"><span>${new Date(event.createdAt).toLocaleString()}</span><strong>${esc(event.action)}</strong><span>${esc(event.entityType)} · ${esc(event.detail || event.entityId)}</span></div>`).join('');
-  bindStoryForm();
-  $('#refresh').onclick = loadStories;
-  $('#reset').onclick = async () => { if (!confirm('Reset KNIP demo data?')) return; await api('/api/reset', { method: 'POST', body: '{}' }); selectedId = null; await loadStories(); };
-  if (selectedId && storyData.stories.some(story => story.id === selectedId)) await renderDetail();
+  const loadState = $('#storyLoadState');
+  if (loadState) { loadState.hidden = false; loadState.textContent = 'Loading stories…'; }
+  try {
+    const [storyData, auditData] = await Promise.all([api('/api/stories'), api('/api/audit')]);
+    const stories = Array.isArray(storyData.stories) ? storyData.stories : [];
+    if (!selectedId && stories.length) selectedId = stories[0].id;
+    $('#stories').innerHTML = stories.map(story => `<button class="storyCard ${selectedId === story.id ? 'selected' : ''}" data-id="${story.id}"><span class="storyTop"><strong>${esc(story.title)}</strong><span class="badge">${esc(story.status)}</span></span><small>${story.evidenceCount} evidence · ${story.latestAnalysis ? `${story.latestAnalysis.opportunity}% opportunity` : 'Not analyzed'}</small></button>`).join('') || '<div class="notice"><strong>No stories found.</strong><p>Use “Add a new story” or reset the demo data.</p></div>';
+    document.querySelectorAll('.storyCard').forEach(button => button.onclick = () => selectStory(button.dataset.id));
+    $('#audit').innerHTML = auditData.auditEvents.map(event => `<div class="auditRow"><span>${new Date(event.createdAt).toLocaleString()}</span><strong>${esc(event.action)}</strong><span>${esc(event.entityType)} · ${esc(event.detail || event.entityId)}</span></div>`).join('');
+    bindStoryForm();
+    $('#refresh').onclick = loadStories;
+    $('#reset').onclick = async () => { if (!confirm('Reset KNIP demo data?')) return; await api('/api/reset', { method: 'POST', body: '{}' }); selectedId = null; await loadStories(); };
+    if (selectedId && stories.some(story => story.id === selectedId)) await renderDetail();
+    if (loadState) loadState.hidden = true;
+  } catch (error) {
+    if (loadState) { loadState.hidden = false; loadState.textContent = `Unable to load stories: ${error.message}`; }
+    $('#stories').innerHTML = '<div class="notice">Story data could not be loaded. Check that the KNIP server is running, then press Refresh.</div>';
+    throw error;
+  }
 }
 
 function bindStoryForm() {

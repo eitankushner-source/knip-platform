@@ -1,3 +1,10 @@
+# Sprint 3.3.2 — Stability & Data Layer
+
+- Story cards now render above the story creation form.
+- The first available story is selected automatically.
+- Added explicit loading, empty, and API-error states.
+- Added regression coverage for repository ordering and auto-selection.
+
 # Release 0.3 — Iteration 3.2
 
 - Functional Executive Decision Center and queue
@@ -29,3 +36,10 @@ This release remains local-first and deterministic. No external LLM or cloud ser
 - Added the Executive Decision Center dashboard shell with seeded KPI, queue, pipeline, AI activity, and timeline panels.
 - Preserved the complete Story Intelligence Workspace under the Story Repository route.
 - Added responsive desktop, tablet, and mobile navigation behavior.
+
+
+## Iteration 3.3.1 — Institutional Learning
+- Learning records created from executive decisions
+- Outcome and lessons-learned capture
+- Institutional Learning workspace
+- Decision brief learning panel and audit events
