@@ -18,6 +18,31 @@
         "democratic",
         "partnership",
         "resilience"
+      ],
+      "description": "Center-left voters who respond to pragmatic innovation, democratic values, and measurable human benefit.",
+      "values": [
+        "Community",
+        "Innovation",
+        "Equality"
+      ],
+      "themes": [
+        "Technology",
+        "Humanitarian Impact"
+      ],
+      "channels": [
+        "Local news",
+        "Policy newsletters",
+        "LinkedIn"
+      ],
+      "messengers": [
+        "Subject-matter experts",
+        "Local beneficiaries",
+        "Civic leaders"
+      ],
+      "framing": "Lead with practical impact, accountability, and nonpartisan problem-solving.",
+      "sensitivities": [
+        "partisan",
+        "propaganda"
       ]
     },
     {
@@ -31,6 +56,31 @@
         "environment",
         "energy",
         "sustainability"
+      ],
+      "description": "Climate, water, and environmental advocates seeking scalable, evidence-based solutions.",
+      "values": [
+        "Sustainability",
+        "Innovation",
+        "Community"
+      ],
+      "themes": [
+        "Water",
+        "Agriculture",
+        "Climate Resilience"
+      ],
+      "channels": [
+        "Environmental media",
+        "NGO newsletters",
+        "Instagram"
+      ],
+      "messengers": [
+        "Farmers",
+        "Climate scientists",
+        "Field practitioners"
+      ],
+      "framing": "Lead with climate resilience, resource efficiency, and independently verified outcomes.",
+      "sensitivities": [
+        "greenwashing"
       ]
     },
     {
@@ -43,6 +93,31 @@
         "purpose",
         "community",
         "impact"
+      ],
+      "description": "Younger professionals attracted to innovation, purpose, technology, and social impact.",
+      "values": [
+        "Innovation",
+        "Community",
+        "Resilience"
+      ],
+      "themes": [
+        "Technology",
+        "Science",
+        "Education"
+      ],
+      "channels": [
+        "LinkedIn",
+        "Instagram",
+        "Podcasts"
+      ],
+      "messengers": [
+        "Young founders",
+        "Researchers",
+        "Peers"
+      ],
+      "framing": "Connect innovation to purpose, career relevance, and visible human outcomes.",
+      "sensitivities": [
+        "corporate jargon"
       ]
     },
     {
@@ -55,6 +130,31 @@
         "coexistence",
         "service",
         "family"
+      ],
+      "description": "Faith-motivated progressives focused on dignity, service, coexistence, and care for vulnerable communities.",
+      "values": [
+        "Compassion",
+        "Community",
+        "Equality"
+      ],
+      "themes": [
+        "Humanitarian Impact",
+        "Diversity"
+      ],
+      "channels": [
+        "Faith newsletters",
+        "Community forums",
+        "Facebook"
+      ],
+      "messengers": [
+        "Faith leaders",
+        "Beneficiaries",
+        "Service volunteers"
+      ],
+      "framing": "Center dignity, service, compassion, and shared moral responsibility.",
+      "sensitivities": [
+        "militarized",
+        "partisan"
       ]
     },
     {
@@ -67,6 +167,30 @@
         "agriculture",
         "livelihood",
         "service"
+      ],
+      "description": "Hispanic evangelical communities with strong family, faith, service, and livelihood priorities.",
+      "values": [
+        "Community",
+        "Compassion",
+        "Resilience"
+      ],
+      "themes": [
+        "Agriculture",
+        "Humanitarian Impact"
+      ],
+      "channels": [
+        "Church networks",
+        "WhatsApp",
+        "Spanish-language radio"
+      ],
+      "messengers": [
+        "Pastors",
+        "Families",
+        "Community entrepreneurs"
+      ],
+      "framing": "Lead with family well-being, service, faith-compatible values, and practical opportunity.",
+      "sensitivities": [
+        "elite framing"
       ]
     },
     {
@@ -79,6 +203,31 @@
         "innovation",
         "civil society",
         "education"
+      ],
+      "description": "Jewish communal leaders seeking credible, values-based stories of Israeli society and impact.",
+      "values": [
+        "Community",
+        "Resilience",
+        "Innovation"
+      ],
+      "themes": [
+        "Education",
+        "Technology",
+        "Diversity"
+      ],
+      "channels": [
+        "Community newsletters",
+        "Briefings",
+        "Email"
+      ],
+      "messengers": [
+        "Israeli civil-society leaders",
+        "Researchers",
+        "Community partners"
+      ],
+      "framing": "Emphasize authentic Israeli voices, pluralism, societal resilience, and verified impact.",
+      "sensitivities": [
+        "overclaiming"
       ]
     },
     {
@@ -91,6 +240,31 @@
         "education",
         "technology",
         "climate"
+      ],
+      "description": "Students, faculty, and academic communities that prioritize evidence, research, and intellectual credibility.",
+      "values": [
+        "Education",
+        "Innovation",
+        "Equality"
+      ],
+      "themes": [
+        "Science",
+        "Education",
+        "Climate Resilience"
+      ],
+      "channels": [
+        "Campus media",
+        "Academic events",
+        "Research newsletters"
+      ],
+      "messengers": [
+        "Researchers",
+        "Students",
+        "Independent experts"
+      ],
+      "framing": "Lead with methodology, evidence, limitations, and opportunities for inquiry.",
+      "sensitivities": [
+        "unsupported claims"
       ]
     }
   ],

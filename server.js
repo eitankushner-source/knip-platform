@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT || 3000);
 const DATA_FILE = path.resolve(__dirname, process.env.KNIP_DATA_FILE || './data/database.json');
 const SEED_FILE = path.resolve(__dirname, './data/seed.json');
-const VERSION = '0.4.0-alpha-narrative-dna-iteration-4.1';
+const VERSION = '0.5.0-alpha-audience-intelligence-iteration-5.1';
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
 
 async function ensureDatabase() {
@@ -125,20 +125,36 @@ function buildNarrativeDna(story, evidence, scores, combined) {
 }
 
 function matchAudiences(story, analysis, audiences) {
-  const text = `${story.title} ${story.summary} ${story.fullNarrative || ''} ${analysis.category} ${analysis.keywords.join(' ')}`.toLowerCase();
+  const dna = analysis.narrativeDna || {};
+  const text = `${story.title} ${story.summary} ${story.fullNarrative || ''} ${analysis.category} ${analysis.keywords.join(' ')} ${(dna.humanValues||[]).join(' ')} ${(dna.themes||[]).join(' ')} ${(dna.emotionalSignals||[]).join(' ')}`.toLowerCase();
   return audiences.map(audience => {
-    const matched = audience.signals.filter(signal => text.includes(signal.toLowerCase()));
-    const base = 38 + matched.length*11 + analysis.humanImpact*.16 + analysis.strategicValue*.12 - analysis.risk*.08;
-    const match = clamp(base, 20, 97);
+    const matched = (audience.signals || []).filter(signal => text.includes(signal.toLowerCase()));
+    const valueMatches = (audience.values || []).filter(value => (dna.humanValues || []).some(item => item.toLowerCase() === value.toLowerCase()));
+    const themeMatches = (audience.themes || []).filter(theme => (dna.themes || []).some(item => item.toLowerCase().includes(theme.toLowerCase()) || theme.toLowerCase().includes(item.toLowerCase())));
+    const thematicFit = clamp(35 + matched.length*10 + valueMatches.length*9 + themeMatches.length*8);
+    const emotionalFit = clamp(40 + (dna.emotionalSignals || []).length*6 + analysis.humanImpact*.25);
+    const credibilityFit = clamp((dna.evidenceQuality ?? analysis.credibility)*.75 + analysis.completeness*.25);
+    const opportunity = clamp(thematicFit*.38 + emotionalFit*.22 + credibilityFit*.22 + analysis.strategicValue*.18);
+    const risk = clamp(analysis.risk + (matched.length===0 ? 12 : 0) + ((audience.sensitivities||[]).some(term=>text.includes(term.toLowerCase())) ? 18 : 0));
+    const match = clamp(opportunity - risk*.18 + 10, 20, 98);
     const reasons = [
-      ...(matched.length ? [`The story matches ${matched.slice(0,3).join(', ')} themes associated with this audience.`] : []),
-      ...(analysis.humanImpact >= 70 ? ['The human impact is concrete and easy to understand.'] : []),
-      ...(analysis.credibility >= 70 ? ['The supporting evidence is sufficiently credible for initial outreach.'] : []),
-      ...(analysis.risk >= 55 ? ['The framing should be tested carefully because the current risk score is elevated.'] : [])
+      ...(matched.length ? [`Strong signal alignment: ${matched.slice(0,4).join(', ')}.`] : []),
+      ...(valueMatches.length ? [`Shared values: ${valueMatches.slice(0,3).join(', ')}.`] : []),
+      ...(themeMatches.length ? [`Relevant themes: ${themeMatches.slice(0,3).join(', ')}.`] : []),
+      ...(analysis.humanImpact >= 70 ? ['The human impact is concrete and accessible.'] : []),
+      ...(credibilityFit >= 70 ? ['Evidence quality supports initial audience testing.'] : []),
+      ...(risk >= 55 ? ['Use careful framing and small-scale message testing before broad distribution.'] : [])
     ];
-    return { audienceId:audience.id, name:audience.name, match, rationale:reasons[0] || 'The audience has a moderate thematic fit, but additional evidence would improve confidence.', reasons };
-  }).sort((a,b)=>b.match-a.match).slice(0,5);
+    return {
+      audienceId: audience.id, name: audience.name, description: audience.description || '',
+      match, opportunity, risk, thematicFit, emotionalFit, credibilityFit,
+      rationale: reasons[0] || 'Moderate fit; additional evidence and audience testing would improve confidence.',
+      reasons, channels: audience.channels || [], messengers: audience.messengers || [],
+      framing: audience.framing || 'Lead with concrete human impact and avoid political abstraction.'
+    };
+  }).sort((a,b)=>b.match-a.match).slice(0,7);
 }
+
 function analyzeStory(story, evidence, audiences) {
   const combined = `${story.title} ${story.summary} ${story.fullNarrative || ''} ${evidence.map(e=>`${e.title} ${e.claim}`).join(' ')}`;
   const scores = scoreSignals(story,evidence);
@@ -186,6 +202,12 @@ export async function handleRequest(req,res) {
   const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
   if(req.method==='GET'&&url.pathname==='/api/health') return sendJson(res,200,{status:'ok',service:'knip-platform',version:VERSION,timestamp:new Date().toISOString()});
   if(req.method==='GET'&&url.pathname==='/api/audiences'){const db=await readDb();return sendJson(res,200,{audiences:db.audiences||[]});}
+  if(req.method==='GET'&&url.pathname==='/api/audience-intelligence'){
+    const db=await readDb();
+    const stories=(db.stories||[]).map(story=>{const analysis=(db.analyses||[]).find(item=>item.storyId===story.id)||null;return{story,analysis,matches:analysis?matchAudiences(story,analysis,db.audiences||[]):[]};});
+    const audienceSummaries=(db.audiences||[]).map(audience=>{const ranked=stories.filter(item=>item.analysis).map(item=>{const match=item.matches.find(m=>m.audienceId===audience.id);return match?{storyId:item.story.id,storyTitle:item.story.title,...match}:null;}).filter(Boolean).sort((a,b)=>b.match-a.match);return{...audience,topStories:ranked.slice(0,5),averageMatch:ranked.length?clamp(ranked.reduce((sum,item)=>sum+item.match,0)/ranked.length):0};});
+    return sendJson(res,200,{audiences:audienceSummaries,stories});
+  }
   if(req.method==='GET'&&url.pathname==='/api/stories'){
     const db=await readDb(); const stories=(db.stories||[]).map(s=>({...s,evidenceCount:(db.evidence||[]).filter(e=>e.storyId===s.id).length,latestAnalysis:(db.analyses||[]).find(a=>a.storyId===s.id)||null})); return sendJson(res,200,{stories});
   }
