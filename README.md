@@ -20,3 +20,7 @@ npm.cmd run verify
 ### Sprint 5.1 — Audience Intelligence
 
 KNIP now converts Narrative DNA into explainable audience recommendations. Each profile includes shared values, relevant themes, preferred channels, trusted messengers, recommended framing, risk, opportunity, and ranked story matches.
+
+
+## Sprint 7.2 — AI Campaign Strategist
+Campaign Planner with Ruby strategic recommendations, objectives, risks, framing, channels, messengers, dependencies, budgets, complexity and explainability.

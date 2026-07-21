@@ -1,3 +1,11 @@
+# Release 0.7.2 — AI Campaign Strategist
+
+- Campaign Planner workspace
+- Ruby Chief Strategy Officer panel
+- Strategic objective, priority, budget and complexity
+- Risks, strengths, dependencies and explainability
+- Campaign channels, messengers, assets, CTA and KPIs
+
 # Release Notes
 
 ## 0.4.0-alpha — Sprint 4.1 Narrative DNA Analyzer
