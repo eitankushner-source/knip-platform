@@ -1,6 +1,1 @@
-{
-  "name":"knip-platform","version":"0.2.0-alpha-story-intelligence","private":true,
-  "description":"KNIP — Knowledge & Narrative Intelligence Platform","type":"module",
-  "scripts":{"start":"node server.js","dev":"node --watch server.js","test":"node --test","check":"node --check server.js && node --check public/app.js","verify":"npm run check && npm test"},
-  "engines":{"node":">=20"}
-}
+{"name":"knip-platform","version":"0.3.0-alpha-story-intelligence-workspace","private":true,"description":"KNIP — Knowledge & Narrative Intelligence Platform","type":"module","scripts":{"start":"node server.js","dev":"node --watch server.js","test":"node --test","check":"node --check server.js && node --check public/app.js","verify":"npm run check && npm test"},"engines":{"node":">=20"}}
