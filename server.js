@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT || 3000);
 const DATA_FILE = path.resolve(__dirname, process.env.KNIP_DATA_FILE || './data/database.json');
 const SEED_FILE = path.resolve(__dirname, './data/seed.json');
-const VERSION = '0.7.2-alpha-ai-campaign-strategist';
+const VERSION = '0.8.0-alpha-institutional-learning-engine';
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
 
 async function ensureDatabase() {
@@ -212,6 +212,19 @@ async function serveStatic(req,res) {
   catch { return false; }
 }
 
+function buildLearningIntelligence(db) {
+  const records = db.learningRecords || [];
+  const completed = records.filter(r => r.outcome && r.outcome !== 'PENDING');
+  const successful = completed.filter(r => r.outcome === 'SUCCESS');
+  const partial = completed.filter(r => r.outcome === 'PARTIAL');
+  const successRate = completed.length ? clamp((successful.length + partial.length * .5) / completed.length * 100) : 0;
+  const patterns = new Map();
+  for (const record of records) for (const tag of record.patterns || []) patterns.set(tag, (patterns.get(tag) || 0) + 1);
+  const reusablePatterns = [...patterns.entries()].sort((a,b)=>b[1]-a[1]).map(([label,count])=>({label,count}));
+  const insights = records.flatMap(r => r.insights || []).map((text,index)=>({id:`insight_${index}`,text})).slice(0,8);
+  return { metrics:{totalDecisions:records.length,completedCampaigns:completed.length,successRate,lessonsCaptured:records.filter(r=>r.lessonsLearned).length,reusablePatterns:reusablePatterns.length}, reusablePatterns, insights, records };
+}
+
 export async function handleRequest(req,res) {
   const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
   if(req.method==='GET'&&url.pathname==='/api/health') return sendJson(res,200,{status:'ok',service:'knip-platform',version:VERSION,timestamp:new Date().toISOString()});
@@ -245,7 +258,8 @@ export async function handleRequest(req,res) {
   if(req.method==='GET'&&decisionMatch){const db=await readDb();const brief=(db.decisionBriefs||[]).find(item=>item.id===decisionMatch[1]);if(!brief)return sendJson(res,404,{error:'Decision brief not found'});const decisions=(db.executiveDecisions||[]).filter(item=>item.briefId===brief.id);return sendJson(res,200,{brief,decisions});}
   const decisionActionMatch=url.pathname.match(/^\/api\/decisions\/([^/]+)\/actions$/);
   if(req.method==='POST'&&decisionActionMatch){try{const body=await readBody(req);const allowed=['APPROVE','REJECT','RESEARCH','ESCALATE','ARCHIVE'];if(!allowed.includes(body.action))return sendJson(res,400,{error:'A valid decision action is required'});const db=await readDb();const brief=(db.decisionBriefs||[]).find(item=>item.id===decisionActionMatch[1]);if(!brief)return sendJson(res,404,{error:'Decision brief not found'});db.executiveDecisions??=[];db.learningRecords??=[];const decision={id:`decision_${crypto.randomUUID()}`,briefId:brief.id,storyId:brief.storyId,action:body.action,note:String(body.note||'').trim(),actorId:'usr_admin',createdAt:new Date().toISOString()};db.executiveDecisions.unshift(decision);brief.status=body.action==='RESEARCH'?'RESEARCH_REQUESTED':body.action==='ESCALATE'?'ESCALATED':body.action==='ARCHIVE'?'ARCHIVED':body.action==='APPROVE'?'APPROVED':'REJECTED';brief.history??=[];brief.history.unshift({at:decision.createdAt,actor:'Ethan Kushner',action:`Executive decision: ${body.action}${decision.note?` — ${decision.note}`:''}`});let learning=db.learningRecords.find(item=>item.briefId===brief.id);const advisors=Object.fromEntries((brief.advisors||[]).map(item=>[item.name,item.position]));if(!learning){learning={id:`learning_${crypto.randomUUID()}`,briefId:brief.id,storyId:brief.storyId,storyTitle:brief.title,decision:body.action,decisionMaker:'Ethan Kushner',advisorRecommendations:advisors,outcome:'PENDING',lessonsLearned:'',decisionDate:decision.createdAt,updatedAt:decision.createdAt};db.learningRecords.unshift(learning);}else{Object.assign(learning,{decision:body.action,decisionMaker:'Ethan Kushner',advisorRecommendations:advisors,decisionDate:decision.createdAt,updatedAt:decision.createdAt});}audit(db,'EXECUTIVE_DECISION','DECISION_BRIEF',brief.id,'usr_admin',body.action);audit(db,'LEARNING_RECORD_UPDATED','LEARNING_RECORD',learning.id,'usr_admin',`Decision ${body.action}`);await writeDb(db);return sendJson(res,201,{decision,brief,learningRecord:learning});}catch(error){return sendJson(res,400,{error:error.message});}}
-  if(req.method==='GET'&&url.pathname==='/api/learning'){const db=await readDb();return sendJson(res,200,{learningRecords:db.learningRecords||[]});}
+  if(req.method==='GET'&&url.pathname==='/api/learning'){const db=await readDb();return sendJson(res,200,{learningRecords:db.learningRecords||[],intelligence:buildLearningIntelligence(db)});}
+  if(req.method==='GET'&&url.pathname==='/api/learning-intelligence'){const db=await readDb();return sendJson(res,200,{intelligence:buildLearningIntelligence(db)});}
   const learningMatch=url.pathname.match(/^\/api\/learning\/([^/]+)$/);
   if(req.method==='GET'&&learningMatch){const db=await readDb();const record=(db.learningRecords||[]).find(item=>item.briefId===learningMatch[1]||item.id===learningMatch[1]);if(!record)return sendJson(res,404,{error:'Learning record not found'});return sendJson(res,200,{learningRecord:record});}
   if(req.method==='PUT'&&learningMatch){try{const body=await readBody(req);const db=await readDb();db.learningRecords??=[];const brief=(db.decisionBriefs||[]).find(item=>item.id===learningMatch[1]);if(!brief)return sendJson(res,404,{error:'Decision brief not found'});let record=db.learningRecords.find(item=>item.briefId===brief.id);const now=new Date().toISOString();if(!record){record={id:`learning_${crypto.randomUUID()}`,briefId:brief.id,storyId:brief.storyId,storyTitle:brief.title,decision:'PENDING',decisionMaker:'Unassigned',advisorRecommendations:Object.fromEntries((brief.advisors||[]).map(item=>[item.name,item.position])),outcome:'PENDING',lessonsLearned:'',decisionDate:null,updatedAt:now};db.learningRecords.unshift(record);}if('outcome' in body)record.outcome=String(body.outcome||'PENDING').trim().toUpperCase();if('lessonsLearned' in body)record.lessonsLearned=String(body.lessonsLearned||'').trim();record.updatedAt=now;audit(db,'LEARNING_RECORD_SAVED','LEARNING_RECORD',record.id,'usr_admin',record.outcome);await writeDb(db);return sendJson(res,200,{learningRecord:record});}catch(error){return sendJson(res,400,{error:error.message});}}

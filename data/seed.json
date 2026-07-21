@@ -635,5 +635,95 @@
     }
   ],
   "executiveDecisions": [],
-  "learningRecords": []
+  "learningRecords": [
+    {
+      "id": "learning_001",
+      "briefId": "brief_001",
+      "storyId": "story_001",
+      "storyTitle": "Israeli water technology helps drought-affected farmers",
+      "decision": "APPROVE",
+      "decisionMaker": "Ethan Kushner",
+      "advisorRecommendations": {
+        "Shani": "RESEARCH",
+        "Ruby": "ADVANCE",
+        "Amit": "READY",
+        "CTA": "PROCEED"
+      },
+      "outcome": "SUCCESS",
+      "lessonsLearned": "Lead with farmers and measurable drought resilience; mention Israel after the human benefit is established.",
+      "decisionDate": "2026-06-12T09:00:00.000Z",
+      "updatedAt": "2026-07-10T09:00:00.000Z",
+      "patterns": [
+        "Human-first framing",
+        "Independent evidence",
+        "Climate resilience"
+      ],
+      "insights": [
+        "Human-first framing increased trust with sustainability audiences.",
+        "Independent outcome evidence reduced perceived promotional risk."
+      ],
+      "campaignMetrics": {
+        "reach": 184000,
+        "engagementRate": 7.8,
+        "positiveSentiment": 82
+      }
+    },
+    {
+      "id": "learning_002",
+      "briefId": "brief_002",
+      "storyId": "story_002",
+      "storyTitle": "Druze first responders strengthen community resilience",
+      "decision": "RESEARCH",
+      "decisionMaker": "Ethan Kushner",
+      "advisorRecommendations": {
+        "Shani": "RESEARCH",
+        "Ruby": "ADVANCE_LATER",
+        "Amit": "NOT_READY",
+        "CTA": "RESEARCH"
+      },
+      "outcome": "PARTIAL",
+      "lessonsLearned": "Community resilience resonated, but direct testimony and permissions were needed before expansion.",
+      "decisionDate": "2026-06-25T11:30:00.000Z",
+      "updatedAt": "2026-07-11T08:15:00.000Z",
+      "patterns": [
+        "Community resilience",
+        "Trusted local messenger",
+        "Permission dependency"
+      ],
+      "insights": [
+        "Local messengers improved credibility more than institutional spokespeople."
+      ],
+      "campaignMetrics": {
+        "reach": 62000,
+        "engagementRate": 5.1,
+        "positiveSentiment": 74
+      }
+    },
+    {
+      "id": "learning_003",
+      "briefId": "brief_003",
+      "storyId": "story_003",
+      "storyTitle": "Israeli climate startup expands urban heat monitoring",
+      "decision": "HOLD",
+      "decisionMaker": "Ethan Kushner",
+      "advisorRecommendations": {
+        "Shani": "HOLD",
+        "Ruby": "REFRAME",
+        "Amit": "NOT_READY",
+        "CTA": "HOLD"
+      },
+      "outcome": "NO_ACTION",
+      "lessonsLearned": "Technology-only framing lacked a visible beneficiary. Future versions require a resident or city outcome story.",
+      "decisionDate": "2026-07-02T14:00:00.000Z",
+      "updatedAt": "2026-07-02T14:00:00.000Z",
+      "patterns": [
+        "Visible beneficiary required",
+        "Technology framing risk"
+      ],
+      "insights": [
+        "Stories without visible beneficiaries underperformed in executive review."
+      ],
+      "campaignMetrics": null
+    }
+  ]
 }

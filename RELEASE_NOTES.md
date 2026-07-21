@@ -26,3 +26,9 @@ This release remains deterministic. Live LLM orchestration is planned for a late
 - Added explainable story-to-audience matching with opportunity, risk, thematic fit, emotional fit, and credibility scores.
 - Added ranked story recommendations for every audience profile.
 - Added direct navigation from audience recommendations back to the Story Workspace.
+
+
+## 0.8.0-alpha — Institutional Learning Engine
+- Added institutional learning dashboard and organizational memory metrics.
+- Added reusable pattern detection, learning insights, campaign outcome metrics, and confidence evolution.
+- Added learning intelligence API and seeded learning records.
