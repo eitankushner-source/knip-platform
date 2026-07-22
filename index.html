@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="theme-color" content="#0b3a70"/>
+  <meta name="description" content="KNIP RC3 — approved executive dashboard integrated with live intelligence connectors."/>
+  <title>KNIP RC3 — Approved Dashboard + Live Intelligence</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="assets/kerem-logo.png" alt="Kerem Alliance"/>
+      <div class="product-name"><strong>KNIP</strong><span>Narrative Intelligence</span></div>
+    </div>
+
+    <nav id="nav">
+      <button class="nav-item active" data-view="home"><span>⌂</span><div><b>Executive Home</b><small>Command Center</small></div></button>
+      <button class="nav-item" data-view="stories"><span>◫</span><div><b>Stories</b><small>Discover Opportunities</small></div></button>
+      <button class="nav-item" data-view="audiences"><span>◎</span><div><b>Audiences</b><small>Audience Intelligence</small></div></button>
+      <button class="nav-item" data-view="narratives"><span>⌁</span><div><b>Narratives</b><small>Narrative Intelligence</small></div></button>
+      <button class="nav-item" data-view="advisory"><span>✦</span><div><b>AI Advisory Board</b><small>Deliberate & Decide</small></div></button>
+      <button class="nav-item" data-view="campaigns"><span>➤</span><div><b>Campaign Lab</b><small>Plan & Execute</small></div></button>
+      <button class="nav-item" data-view="learning"><span>◈</span><div><b>Institutional Learning</b><small>Learn & Improve</small></div></button>
+      <button class="nav-item" data-view="graph"><span>⌘</span><div><b>Knowledge Graph</b><small>Connected Intelligence</small></div></button>
+      <button class="nav-item" data-view="platform"><span>▧</span><div><b>Platform Architecture</b><small>Evidence · Sources · Decisions</small></div></button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button id="focusToggle" class="focus-btn">◎ Focus Mode</button>
+      <p>Do not disturb for<br/>decision-making</p>
+      <button class="simple-link">⚙ Settings</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="pageTitle">Good Evening, Ethan <span class="sun">✦</span></h1>
+        <p id="pageSubtitle">One strategic decision requires your attention today.</p>
+      </div>
+      <div class="top-actions">
+        <label class="search">⌕ <input id="globalSearch" placeholder="Search KNIP..."/><kbd>Ctrl K</kbd></label>
+        <button class="icon-btn" title="Notifications">♢<span class="badge">3</span></button>
+        <div class="profile"><span>EK</span><div><b>Ethan Kushner</b><small>Executive Director</small></div></div>
+      </div>
+    </header>
+
+    <section id="view-home" class="view active approved-home">
+      <div class="approved-login-strip">
+        <div class="approved-strip-title">SINCE YOUR LAST LOGIN <span id="lastLogin">Yesterday, 8:32 AM</span></div>
+        <div class="approved-metrics">
+          <article><i class="blue">▤</i><strong id="metricStories">4</strong><span>Stories Validated</span><em id="metricStoriesTrend">↑ 33%</em></article>
+          <article><i class="green">✓</i><strong id="metricCampaigns">2</strong><span>Campaigns Completed</span><em id="metricCampaignsTrend">↑ 100%</em></article>
+          <article><i class="purple">↗</i><strong id="metricNarratives">1</strong><span>Narrative Emerging</span><em id="metricNarrativesTrend">New</em></article>
+          <article><i class="orange">●</i><strong id="metricSentiment">+4%</strong><span>Audience Sentiment</span><em id="metricSentimentTrend">↑ 4%</em></article>
+          <article><i class="red">⌁</i><strong>1</strong><span>Recommendation Changed</span><em>View</em></article>
+        </div>
+      </div>
+
+      <div class="approved-hero-grid">
+        <article class="approved-decision-card">
+          <div class="approved-eyebrow">★ TODAY'S PRIORITY DECISION</div>
+          <div class="approved-decision-content">
+            <div class="approved-decision-copy">
+              <h2 id="priorityTitle">Approve campaign based on Israeli drought technology story</h2>
+              <div class="approved-score-grid">
+                <div><small>Audience Match</small><strong id="audienceMatchValue">94%</strong><span><i id="audienceMatchBar" style="width:94%"></i></span></div>
+                <div><small>Confidence</small><strong id="evidenceQualityValue">92%</strong><span><i id="evidenceQualityBar" style="width:92%"></i></span></div>
+                <div><small>Strategic Impact</small><strong id="strategicImpactValue">High</strong><span><i id="strategicImpactBar" style="width:88%"></i></span></div>
+              </div>
+            </div>
+            <div class="approved-story-image" role="img" aria-label="Agricultural irrigation field"><div class="approved-play">▶</div></div>
+          </div>
+          <p id="prioritySummary" class="sr-only">A verified human-impact story with strong relevance to climate resilience, food security, and moderate Democratic audiences.</p>
+          <div class="approved-impact-row">
+            <div><b>IF APPROVED</b><span id="approvedImpact">Reach 2.4M people<br/>Expected engagement +18%<br/>Strongest audience: <a>Moderate Democrats</a></span></div>
+            <div><b>IF DELAYED</b><span id="delayImpact">Opportunity likely declines<br/>in 72 hours</span></div>
+          </div>
+          <div class="approved-actions">
+            <button class="btn primary" data-open-brief="true">Review Details</button>
+            <button class="btn approve" data-toast="Decision approved and logged">Approve</button>
+            <button class="btn ghost" data-toast="Decision delegated">Delegate</button>
+            <button class="btn ghost" data-toast="Recommendation challenge started">⚖ Challenge Recommendation</button>
+          </div>
+        </article>
+
+        <article class="approved-board-card">
+          <div class="approved-card-head"><h3>AI ADVISORY BOARD <small>ⓘ</small></h3><button data-view-jump="advisory">View Full Deliberation</button></div>
+          <div class="approved-advisor"><span class="avatar ruby">R</span><div><b>Ruby</b><small>Chief Strategy Officer</small></div><p>“I recommend moving now.”</p><em>STRATEGIC VIEW <i>↑</i></em></div>
+          <div class="approved-advisor"><span class="avatar shani">S</span><div><b>Shani</b><small>Chief Knowledge Officer</small></div><p>“Evidence quality is excellent.”</p><em>EVIDENCE QUALITY <i>↑</i></em></div>
+          <div class="approved-advisor"><span class="avatar amit">A</span><div><b>Amit</b><small>Chief Operations Officer</small></div><p>“Execution capacity is available.”</p><em>OPERATIONAL VIEW <i>↑</i></em></div>
+          <div class="approved-advisor"><span class="avatar cta">C</span><div><b>CTA</b><small>Chief Technology Architect</small></div><p>“Recommend another 12 hours of monitoring.”</p><em>TECHNOLOGY VIEW <i class="neutral">−</i></em></div>
+          <div class="approved-advisor"><span class="avatar devil">D</span><div><b>Devil's Advocate</b><small>AI Skeptic</small></div><p>“Waiting may reveal whether this is a short-lived spike.”</p><em>RISK PERSPECTIVE <i class="down">↓</i></em></div>
+          <button class="approved-transcript" data-view-jump="advisory">▤ View Full Deliberation Transcript</button>
+        </article>
+      </div>
+
+      <div class="approved-lower-grid">
+        <article class="approved-panel"><div class="approved-card-head"><h3>EMERGING INTELLIGENCE</h3><button data-view-jump="stories">View All</button></div><div class="approved-kpi"><i class="blue">▤</i><span>Emerging Stories</span><b>7</b><em>↑ 2</em></div><div class="approved-kpi"><i class="orange">⌁</i><span>Narrative Changes</span><b>5</b><em>↑ 2</em></div><div class="approved-kpi"><i class="purple">●</i><span>Audience Shifts</span><b>3</b><em>↑ 1</em></div><div class="approved-kpi"><i class="red">▲</i><span>Risks Identified</span><b>2</b><em class="risk">↑ 1</em></div></article>
+        <article class="approved-panel campaigns"><div class="approved-card-head"><h3>ACTIVE CAMPAIGNS</h3><button data-view-jump="campaigns">View All</button></div><div class="approved-campaign-body"><div class="approved-donut"><span><b>6</b><small>Active</small></span></div><ul><li><i class="green"></i>3 On Track</li><li><i class="orange"></i>2 At Risk</li><li><i class="blue"></i>1 Planning</li></ul></div><div class="approved-deadlines"><b>Next Deadlines</b><span>Budget Approval – Water Tech Story <em>Today</em></span><span>Creative Review – Campus Voices <em>Tomorrow</em></span><span>Partner Briefing – Climate Innovators <em>May 22</em></span></div></article>
+        <article class="approved-panel"><div class="approved-card-head"><h3>INSTITUTIONAL LEARNING</h3><button data-view-jump="learning">View All</button></div><div class="approved-kpi"><i class="blue">◉</i><span>Similar Campaigns</span><b>12</b></div><div class="approved-kpi"><i class="green">✓</i><span>Lessons Learned</span><b>28</b><em>↑ 3</em></div><div class="approved-kpi"><i class="purple">★</i><span>Best Practices</span><b>15</b><em>↑ 2</em></div><div class="approved-kpi"><i class="orange">▥</i><span>Knowledge Updates</span><b>6</b><em>New</em></div></article>
+        <article class="approved-panel health"><div class="approved-card-head"><h3>ORGANIZATION HEALTH <small>ⓘ</small></h3></div><small>Institutional Health Score</small><div class="approved-health-score"><strong>89</strong><span>/100</span><svg viewBox="0 0 220 70" aria-label="Organization health trend"><polyline points="4,57 27,48 48,40 69,43 91,53 113,39 135,24 157,17 179,34 215,10" fill="none" stroke="currentColor" stroke-width="3"/><g fill="currentColor"><circle cx="4" cy="57" r="3"/><circle cx="27" cy="48" r="3"/><circle cx="48" cy="40" r="3"/><circle cx="69" cy="43" r="3"/><circle cx="91" cy="53" r="3"/><circle cx="113" cy="39" r="3"/><circle cx="135" cy="24" r="3"/><circle cx="157" cy="17" r="3"/><circle cx="179" cy="34" r="3"/><circle cx="215" cy="10" r="3"/></g></svg></div><div class="approved-health-metrics"><span>Decision Documentation <b>94</b></span><span>Evidence Quality <b>96</b></span><span>Lesson Capture <b>91</b></span><span>Knowledge Reuse <b>83</b></span><span>Best Practice Adoption <b>87</b></span><span>Collaboration <b>89</b></span></div></article>
+      </div>
+
+      <article class="approved-next-actions"><div class="approved-card-head"><h3>RECOMMENDED NEXT ACTIONS</h3><button>View All Actions</button></div><div class="approved-action-row"><button data-view-jump="stories"><i class="blue">▤</i><span>Review new water<br/>technology story</span><b>›</b></button><button data-view-jump="campaigns"><i class="green">$</i><span>Approve<br/>campaign budget</span><b>›</b></button><button data-view-jump="narratives"><i class="purple">↗</i><span>Analyze narrative<br/>shift: Climate Tech</span><b>›</b></button><button data-toast="Media response task opened"><i class="orange">▢</i><span>Respond to media<br/>inquiry</span><b>›</b></button><button data-toast="Board briefing workspace opened"><i class="teal">▣</i><span>Prepare board<br/>briefing</span><b>›</b></button></div></article>
+    </section>
+
+    <section id="view-brief" class="view executive-brief-view">
+      <div class="brief-toolbar">
+        <button class="back-link" data-view-jump="home">← Back to Executive Home</button>
+        <div class="brief-state"><span class="status-dot"></span><b id="decisionState">Awaiting executive decision</b><small>Brief KNIP-2026-0721-01</small></div>
+        <button class="icon-btn" data-toast="Executive Brief exported to decision record">⇩</button>
+      </div>
+
+      <div class="brief-cover">
+        <div>
+          <span class="eyebrow">CONFIDENTIAL EXECUTIVE BRIEF</span>
+          <h2>Kenyan Farmers Using Israeli Water Innovation</h2>
+          <p>A time-sensitive decision on whether Kerem should amplify a verified human-impact story centered on food security, climate resilience, and practical cooperation.</p>
+          <div class="brief-tags"><span>Climate resilience</span><span>Food security</span><span>Moderate Democrats</span><span>Low reputational risk</span></div>
+        </div>
+        <div class="brief-readiness"><small>DECISION READINESS</small><strong>96%</strong><span>Ready for decision</span></div>
+      </div>
+
+      <div class="brief-layout">
+        <div class="brief-main">
+          <article class="brief-card executive-summary">
+            <div class="section-number">01</div><div><span class="eyebrow">EXECUTIVE SUMMARY</span><h3>Approve—with human-first framing.</h3><p>This is not primarily a technology story. It is a story about farmers protecting their livelihoods during prolonged drought. Israeli water innovation is the enabling mechanism, while the farmers remain the protagonists.</p><div class="recommendation-line"><b>KNIP recommendation</b><strong>APPROVE</strong><span>Launch within 72 hours</span></div></div>
+          </article>
+
+          <article class="brief-card">
+            <div class="section-number">02</div><div class="wide"><span class="eyebrow">WHY THIS MATTERS</span><h3>Strategic value</h3><div class="reason-grid"><div><b>Relevance</b><p>Connects Israel to climate, food security, and practical problem-solving.</p></div><div><b>Persuasion</b><p>Reaches audiences through shared values rather than geopolitical argument.</p></div><div><b>Authenticity</b><p>Beneficiary testimony provides a credible, non-institutional voice.</p></div><div><b>Relationship</b><p>Creates a basis for continued engagement with sustainability networks.</p></div></div></div>
+          </article>
+
+          <article class="brief-card">
+            <div class="section-number">03</div><div class="wide"><span class="eyebrow">EVIDENCE</span><div class="brief-heading-row"><h3>Four independent confirmations</h3><span class="quality-badge">High quality · 92%</span></div><div class="evidence-list"><div><i>✓</i><span><b>Direct farmer interview</b><small>Primary testimony · identity verified</small></span><em>Primary</em></div><div><i>✓</i><span><b>Local media report</b><small>Independent description of implementation and outcomes</small></span><em>Corroborating</em></div><div><i>✓</i><span><b>NGO field documentation</b><small>Program records and deployment details</small></span><em>Operational</em></div><div><i>✓</i><span><b>Agricultural research reference</b><small>Supports the underlying water-efficiency claim</small></span><em>Technical</em></div></div></div>
+          </article>
+
+          <article class="brief-card">
+            <div class="section-number">04</div><div class="wide"><span class="eyebrow">AUDIENCE RECOMMENDATION</span><h3>Priority audience ranking</h3><div class="ranking"><div><b>1</b><span><strong>Moderate Democrats</strong><small>Climate action · international cooperation · human impact</small></span><em>94%</em></div><div><b>2</b><span><strong>Sustainability advocates</strong><small>Water resilience · food security · scalable solutions</small></span><em>91%</em></div><div><b>3</b><span><strong>Young professionals</strong><small>Purpose-driven innovation · measurable impact</small></span><em>87%</em></div><div><b>4</b><span><strong>Faith-based climate networks</strong><small>Stewardship · dignity · community resilience</small></span><em>81%</em></div></div></div>
+          </article>
+
+          <article class="brief-card advisory-deliberation">
+            <div class="section-number">05</div><div class="wide"><span class="eyebrow">AI ADVISORY BOARD</span><div class="brief-heading-row"><h3>Deliberation</h3><span class="quality-badge consensus-badge">4 approve · 1 monitor</span></div><div class="advisor-briefs"><div class="ruby"><span>R</span><p><b>Ruby · Strategy</b>Move now. Lead with parents feeding families—not with a technology claim.</p><em>Approve</em></div><div class="shani"><span>S</span><p><b>Shani · Knowledge</b>Evidence is sufficiently independent and attribution is clear.</p><em>Approve</em></div><div class="amit"><span>A</span><p><b>Amit · Operations</b>Campaign can launch within five business days using available capacity.</p><em>Approve</em></div><div class="cta"><span>C</span><p><b>CTA · Technology</b>Continue monitoring discussion for twelve hours while production begins.</p><em>Monitor</em></div><div class="devil"><span>D</span><p><b>Devil's Advocate · Risk</b>Avoid corporate promotion. The farmers must remain visibly in control of their story.</p><em>Approve</em></div></div><div class="board-consensus"><span>BOARD CONSENSUS</span><b>Approve with one framing condition</b><p>Center the farmers’ experience and present the Israeli technology only as the supporting mechanism.</p></div></div>
+          </article>
+
+          <article class="brief-card">
+            <div class="section-number">06</div><div class="wide"><span class="eyebrow">EXPLAINABILITY</span><h3>Why KNIP reached this recommendation</h3><div class="factor-list"><div><span>Authenticity</span><i><b style="width:100%"></b></i><em>27%</em></div><div><span>Audience match</span><i><b style="width:85%"></b></i><em>23%</em></div><div><span>Evidence</span><i><b style="width:74%"></b></i><em>20%</em></div><div><span>Narrative value</span><i><b style="width:63%"></b></i><em>17%</em></div><div><span>Strategic alignment</span><i><b style="width:48%"></b></i><em>13%</em></div></div></div>
+          </article>
+
+          <article class="brief-card delay-card">
+            <div class="section-number">07</div><div class="wide"><span class="eyebrow">COST OF INACTION</span><h3>The opportunity weakens quickly.</h3><div class="delay-metrics"><div><strong>−18%</strong><span>Expected opportunity value if delayed</span></div><div><strong>72h</strong><span>Estimated window before audience interest declines</span></div><div><strong>+12%</strong><span>Risk of competing narratives defining the story first</span></div></div></div>
+          </article>
+
+          <article class="brief-card history-card">
+            <div class="section-number">08</div><div class="wide"><span class="eyebrow">DECISION HISTORY & LEARNING</span><h3>Comparable campaign outcome</h3><div class="history-track"><div><b>Approved</b><small>Human-first climate story</small></div><i>→</i><div><b>Launched</b><small>5 days after approval</small></div><i>→</i><div><b>2.3M</b><small>People reached</small></div><i>→</i><div><b>+6%</b><small>Audience sentiment</small></div></div><div class="lesson-callout"><b>Lesson reused</b><span>Beneficiary-led stories outperform technology-first stories across climate and humanitarian campaigns.</span></div></div>
+          </article>
+        </div>
+
+        <aside class="decision-rail">
+          <div class="rail-sticky">
+            <span class="eyebrow">YOUR DECISION</span><h3>What should Kerem do?</h3><p>The decision and rationale will be stored in KNIP's institutional memory.</p>
+            <label>Executive rationale<textarea id="decisionNote" placeholder="Optional note for the decision record..."></textarea></label>
+            <button class="btn approve decision-btn" data-decision="Approved">Approve recommendation</button>
+            <button class="btn warm decision-btn" data-decision="Modified">Approve with modification</button>
+            <button class="btn ghost decision-btn" data-decision="Rejected">Reject recommendation</button>
+            <button class="challenge-link" data-view-jump="advisory">Challenge with Advisory Board →</button>
+            <div class="rail-audit"><b>Decision record</b><span>Evidence snapshot preserved</span><span>Advisor positions preserved</span><span>Executive rationale preserved</span></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="view-stories" class="view story-repository-view">
+      <div class="section-head"><div><span class="eyebrow">DISCOVER · BUILD 0.5</span><h2>Story Intelligence Repository</h2><p>Search, evaluate, preserve, and advance every story through KNIP's intelligence workflow.</p></div><div class="repo-actions"><button class="btn ghost" id="toggleStoryView">☷ List View</button><button class="btn approve" data-toast="New story intake form queued for backend integration">+ Add Story</button></div></div>
+      <div class="repo-kpis"><article><span>Total intelligence objects</span><strong id="totalStories">6</strong><small>All stories retained</small></article><article><span>Ready for decision</span><strong>2</strong><small>Executive action required</small></article><article><span>Under review</span><strong>2</strong><small>Evidence or risk review</small></article><article><span>Academic archive</span><strong>1</strong><small>Preserved, not activated</small></article></div>
+      <div class="repository-toolbar"><div class="repo-search"><span>⌕</span><input id="storySearch" placeholder="Search title, location, audience, or narrative"/></div><select id="storyStatus"><option value="all">All statuses</option><option value="Ready">Ready</option><option value="Review">Under review</option><option value="Monitor">Monitor</option><option value="Archived">Archived</option></select><select id="storyTheme"><option value="all">All themes</option><option>Climate Resilience</option><option>Global Health</option><option>Shared Society</option><option>Water Security</option><option>Food Security</option></select><select id="storySort"><option value="opportunity">Sort: Opportunity</option><option value="newest">Sort: Newest</option><option value="evidence">Sort: Evidence</option></select></div>
+      <div class="story-workspace">
+        <div><div id="storyGrid" class="story-grid"></div><div id="storyEmpty" class="story-empty" hidden><b>No stories match these filters.</b><span>Adjust the search or filter criteria.</span></div></div>
+        <aside id="storyDetail" class="story-detail"><div class="detail-placeholder"><span>◎</span><h3>Select a story</h3><p>Open an intelligence object to review its evidence, audiences, risks, and workflow.</p></div></aside>
+      </div>
+    </section>
+
+    <section id="view-audiences" class="view audience-intelligence-view">
+      <div class="section-head audience-head"><div><span class="eyebrow">UNDERSTAND · BUILD 0.8</span><h2>Audience Intelligence</h2><p>Understand who matters, how each demographic relates to Israel, and the language, messengers, and stories most likely to build relevance and trust.</p></div><div class="repo-actions"><button id="compareAudiences" class="btn ghost">⇄ Compare Audiences</button><button class="btn approve" data-toast="Audience research request queued">+ New Audience</button></div></div>
+
+      <div class="simulation-banner"><div><b>DEMONSTRATION DATA</b><span>All scores, trends, sources, and forecasts in this review build are simulated. Production values will be calculated from connected research, polling, campaign, and intelligence sources.</span></div><button id="openMethodology" class="btn ghost">Review Methodology</button></div>
+
+      <div class="audience-priority-strip">
+        <article><span>Highest Strategic Priority</span><strong id="priorityAudience">Moderate Democrats</strong><small>Opportunity 91 · Persuadability 78</small></article>
+        <article><span>Largest Relationship Gap</span><strong>Gen Z Jewish Students</strong><small>Health 52 · High influence potential</small></article>
+        <article><span>Best Near-Term Readiness</span><strong>Healthcare Professionals</strong><small>Readiness 92 · Low reputational risk</small></article>
+        <article><span>Recommended Investment</span><strong id="investmentLevel">HIGH</strong><small>12-month relationship strategy</small></article>
+      </div>
+
+      <div class="audience-toolbar">
+        <div class="repo-search"><span>⌕</span><input id="audienceSearch" placeholder="Search audience, value, concern, or messenger"/></div>
+        <select id="audienceRegion"><option value="all">All regions</option><option>United States</option><option>North America</option></select>
+        <select id="audiencePriority"><option value="all">All priorities</option><option>High</option><option>Medium</option></select>
+        <select id="audienceSort"><option value="priority">Sort: Priority</option><option value="opportunity">Sort: Opportunity</option><option value="health">Sort: Relationship Health</option></select>
+      </div>
+
+      <div class="audience-workspace">
+        <aside class="audience-list-panel">
+          <div class="docket-title"><h3>Audience Portfolio</h3><span id="audienceCount">6 profiles</span></div>
+          <div id="audienceList" class="audience-list"></div>
+        </aside>
+
+        <section class="audience-dossier">
+          <div id="audienceDossier"></div>
+        </section>
+      </div>
+
+      <section id="audienceComparison" class="audience-comparison" hidden>
+        <div class="section-head"><div><span class="eyebrow">PORTFOLIO DECISION</span><h2>Audience Comparison</h2><p>Compare strategic opportunity, relationship health, persuadability, and campaign readiness.</p></div><button id="closeComparison" class="btn ghost">Close Comparison</button></div>
+        <div id="comparisonTable" class="comparison-table"></div>
+      </section>
+    </section>
+
+    <section id="view-narratives" class="view">
+      <div class="section-head"><div><span class="eyebrow">UNDERSTAND</span><h2>Narrative Intelligence</h2><p>Track which authentic narratives are strengthening, weakening, or emerging.</p></div></div>
+      <div class="narrative-board">
+        <article><span class="trend up">↑ Strengthening</span><h3>Israel as a Climate Resilience Partner</h3><p>Growing relevance among sustainability advocates and municipal leaders.</p><div class="mini-chart"><i style="height:25%"></i><i style="height:36%"></i><i style="height:42%"></i><i style="height:57%"></i><i style="height:72%"></i><i style="height:88%"></i></div></article>
+        <article><span class="trend new">● Emerging</span><h3>Shared Society Through Education</h3><p>High authenticity, but requires careful evidence and trusted local voices.</p><div class="mini-chart"><i style="height:18%"></i><i style="height:28%"></i><i style="height:25%"></i><i style="height:42%"></i><i style="height:55%"></i><i style="height:64%"></i></div></article>
+        <article><span class="trend down">↓ Weakening</span><h3>Innovation Without Human Context</h3><p>Technology-first messaging performs poorly without visible human benefit.</p><div class="mini-chart"><i style="height:80%"></i><i style="height:69%"></i><i style="height:58%"></i><i style="height:51%"></i><i style="height:43%"></i><i style="height:31%"></i></div></article>
+      </div>
+    </section>
+
+    <section id="view-advisory" class="view advisory-board-view">
+      <div class="section-head"><div><span class="eyebrow">DECIDE</span><h2>AI Advisory Board</h2><p>Five independent perspectives test the same evidence, challenge assumptions, and synthesize an explainable recommendation.</p></div><button id="runDeliberation" class="btn warm">Run New Deliberation</button></div>
+
+      <div class="board-summary">
+        <article><span>Board Recommendation</span><strong id="boardRecommendation">APPROVE WITH MODIFICATION</strong><small>Lead with farmer testimony; position technology as the supporting mechanism.</small></article>
+        <article><span>Consensus Strength</span><strong id="consensusStrength">84%</strong><small>Four approve · one monitor</small></article>
+        <article><span>Average Confidence</span><strong id="averageConfidence">89%</strong><small>Evidence-backed advisory reasoning</small></article>
+        <article><span>Minority Opinion</span><strong>CTA</strong><small>Hold for twelve hours of signal validation.</small></article>
+      </div>
+
+      <div class="advisory-workspace">
+        <aside class="docket-panel">
+          <div class="docket-title"><h3>Decision Docket</h3><span>3 active</span></div>
+          <button class="docket-item selected" data-docket="water"><b>Water Innovation Story</b><small>Ready for decision</small><em>96%</em></button>
+          <button class="docket-item" data-docket="medical"><b>Guatemala Medical Training</b><small>Evidence review</small><em>84%</em></button>
+          <button class="docket-item" data-docket="robotics"><b>Shared Robotics Team</b><small>Monitoring</small><em>79%</em></button>
+          <div class="board-audit"><b>Audit Trail</b><span>Evidence snapshot captured</span><span>5 advisor responses stored</span><span>Consensus model completed</span></div>
+        </aside>
+
+        <article class="deliberation-stage">
+          <div class="discussion-header"><div><span class="pill green" id="docketReadiness">Readiness 96%</span><h3 id="docketQuestion">Should Kerem amplify the Kenyan farmers story now?</h3><p id="docketContext">Climate resilience · Moderate Democrats · 72-hour opportunity window</p></div><button class="btn approve" data-toast="Decision approved and added to the audit trail">Approve</button></div>
+
+          <div id="advisorGrid" class="advisor-grid"></div>
+
+          <div class="synthesis-panel">
+            <div><span class="eyebrow">SYNTHESIZED RECOMMENDATION</span><h3 id="synthesisTitle">Approve with one modification</h3><p id="synthesisText">Use the beneficiaries as the protagonists, cite the independent evidence record, and monitor discussion for twelve hours before paid amplification begins.</p></div>
+            <div class="vote-ring"><b id="voteCount">4–1</b><small>BOARD VOTE</small></div>
+          </div>
+
+          <div class="board-controls">
+            <label><span>Ask the Board</span><textarea id="boardQuestion" placeholder="Ask a strategic, evidence, operational, technical, or risk question..."></textarea></label>
+            <div><button id="askBoard" class="btn secondary">Ask Board</button><button id="challengeBoard" class="btn ghost">Challenge Recommendation</button><button id="comparePositions" class="btn ghost">Compare Positions</button></div>
+          </div>
+          <div id="boardResponse" class="board-response" hidden></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="view-campaigns" class="view">
+      <div class="section-head"><div><span class="eyebrow">EXECUTE</span><h2>Campaign Lab</h2><p>Transform approved intelligence into disciplined, measurable campaign blueprints.</p></div><button class="btn approve">+ New Blueprint</button></div>
+      <div class="kanban">
+        <div><h3>Planning <span>2</span></h3><article><span class="pill blue">Climate</span><h4>Water Innovation: Kenya</h4><p>Moderate Democrats · Sustainability leaders</p><progress value="35" max="100"></progress><small>Blueprint 35% complete</small></article><article><span class="pill purple">Health</span><h4>Emergency Medicine: Guatemala</h4><p>Latino civic leaders · Healthcare professionals</p><progress value="20" max="100"></progress><small>Blueprint 20% complete</small></article></div>
+        <div><h3>In Production <span>2</span></h3><article><span class="pill orange">Education</span><h4>Robotics Across Communities</h4><p>Young professionals · Educators</p><progress value="68" max="100"></progress><small>Creative review tomorrow</small></article><article><span class="pill green">Food Security</span><h4>Desert Agriculture</h4><p>Rural innovators · AgTech networks</p><progress value="76" max="100"></progress><small>Partner approval pending</small></article></div>
+        <div><h3>Live <span>2</span></h3><article><span class="pill green">Healthcare</span><h4>Mobile Eye Clinics</h4><p>Reach 1.2M · Engagement +14%</p><progress value="82" max="100"></progress><small>On track</small></article><article><span class="pill blue">Disability</span><h4>Inclusive Technology</h4><p>Reach 880K · Engagement +11%</p><progress value="71" max="100"></progress><small>On track</small></article></div>
+      </div>
+    </section>
+
+    <section id="view-learning" class="view">
+      <div class="section-head"><div><span class="eyebrow">LEARN</span><h2>Institutional Learning</h2><p>Every reviewed story, executed campaign, and rejected recommendation improves future decisions.</p></div></div>
+      <div class="learning-grid">
+        <article class="big-stat"><span>Lessons captured</span><b>128</b><em>+14 this month</em></article>
+        <article class="big-stat"><span>Best practices</span><b>34</b><em>+5 this quarter</em></article>
+        <article class="big-stat"><span>Knowledge reused</span><b>83%</b><em>+7 points</em></article>
+      </div>
+      <div class="lesson-list">
+        <article><span class="pill green">Validated</span><h3>Human protagonists outperform institution-led framing</h3><p>Observed across climate, health, and education campaigns. Lead with lived experience; introduce Israeli expertise second.</p><small>Applied to 12 future recommendations</small></article>
+        <article><span class="pill purple">Emerging</span><h3>Moderate audiences respond to practical cooperation</h3><p>Shared problem-solving creates stronger relevance than geopolitical argumentation.</p><small>Evidence from 6 campaigns</small></article>
+        <article><span class="pill orange">Caution</span><h3>High reach does not equal relationship impact</h3><p>Campaigns with smaller trusted networks produced stronger follow-up engagement.</p><small>Added to Decision Engine rules</small></article>
+      </div>
+    </section>
+
+
+    <section id="view-platform" class="view platform-architecture-view">
+      <div class="section-head platform-head"><div><span class="eyebrow">FOUNDATION · BUILD 0.9</span><h2>Intelligence Platform Architecture</h2><p>A working demonstration of KNIP's unified entities, evidence controls, connector framework, recommendation pipeline, and human decision governance.</p></div><div class="repo-actions"><span class="demo-data-badge">DEMONSTRATION DATA</span><button id="exportPlatformAudit" class="btn ghost">Export Architecture Audit</button></div></div>
+
+      <div class="platform-principles">
+        <article><span>01</span><div><b>Evidence before recommendation</b><p>No strategic recommendation may exist without linked evidence and disclosed confidence.</p></div></article>
+        <article><span>02</span><div><b>AI recommends. Humans decide.</b><p>KNIP permanently separates machine advice, human judgment, and measured outcome.</p></div></article>
+        <article><span>03</span><div><b>One shared domain model</b><p>Every workspace reads and writes the same versioned intelligence objects.</p></div></article>
+      </div>
+
+      <div class="platform-grid">
+        <article class="panel domain-panel">
+          <div class="card-head"><h3>Unified Domain Model</h3><span>13 first-class entities</span></div>
+          <div id="entityMap" class="entity-map"></div>
+          <div id="entityInspector" class="entity-inspector"></div>
+        </article>
+        <article class="panel pipeline-panel">
+          <div class="card-head"><h3>Recommendation Pipeline</h3><span id="pipelineStatus">Stage 1 of 10</span></div>
+          <div id="recommendationPipeline" class="recommendation-pipeline"></div>
+          <div class="pipeline-actions"><button id="advancePipeline" class="btn approve">Advance Demonstration</button><button id="resetPipeline" class="btn ghost">Reset</button></div>
+        </article>
+      </div>
+
+      <div class="platform-grid lower">
+        <article class="panel evidence-registry-panel">
+          <div class="card-head"><h3>Evidence Registry</h3><span>Traceable supporting records</span></div>
+          <div class="registry-toolbar"><input id="evidenceSearch" placeholder="Search evidence, source, audience..."/><select id="evidenceValidation"><option value="all">All validation states</option><option>Validated</option><option>Review</option><option>Restricted</option></select></div>
+          <div id="evidenceRegistry" class="evidence-registry"></div>
+        </article>
+        <article class="panel source-panel">
+          <div class="card-head"><h3>Source Reliability Engine</h3><span>Inspectable methodology</span></div>
+          <div id="sourceReliability" class="source-reliability"></div>
+        </article>
+      </div>
+
+      <article class="panel connector-panel">
+        <div class="card-head"><h3>Live Data Connector Framework</h3><span>Production readiness simulation</span></div>
+        <p class="platform-note">Connectors shown below are architectural placeholders. No external service is connected in this review build.</p>
+        <div id="connectorGrid" class="connector-grid"></div>
+      </article>
+
+      <div class="platform-grid lower">
+        <article class="panel decision-graph-panel">
+          <div class="card-head"><h3>Decision Graph</h3><span>Objective-to-learning chain</span></div>
+          <div class="decision-chain"><button data-chain="Mission">Mission</button><i>→</i><button data-chain="Audience">Audience</button><i>→</i><button data-chain="Narrative">Narrative</button><i>→</i><button data-chain="Story">Story</button><i>→</i><button data-chain="Messenger">Messenger</button><i>→</i><button data-chain="Campaign">Campaign</button><i>→</i><button data-chain="Outcome">Outcome</button><i>→</i><button data-chain="Learning">Learning</button></div>
+          <div id="chainInspector" class="chain-inspector">Select an object to inspect its role in the permanent decision record.</div>
+        </article>
+        <article class="panel governance-panel">
+          <div class="card-head"><h3>Human Oversight Record</h3><span>Accountability preserved</span></div>
+          <div class="governance-flow"><div><small>AI RECOMMENDATION</small><b>Approve with modification</b><span>Confidence 89%</span></div><i>→</i><div><small>HUMAN DECISION</small><b>Pending executive review</b><span>Decision owner: Ethan</span></div><i>→</i><div><small>OUTCOME</small><b>Not yet measured</b><span>Locked until execution</span></div></div>
+          <button id="recordHumanDecision" class="btn secondary">Record Human Decision</button>
+        </article>
+      </div>
+    </section>
+
+    <section id="view-graph" class="view">
+      <div class="section-head"><div><span class="eyebrow">CONNECTED INTELLIGENCE</span><h2>Knowledge Graph</h2><p>See how stories, audiences, narratives, campaigns, evidence, and lessons connect.</p></div></div>
+      <div class="graph-wrap">
+        <svg viewBox="0 0 900 520" aria-label="Knowledge graph">
+          <g class="links">
+            <line x1="450" y1="260" x2="180" y2="120"/><line x1="450" y1="260" x2="710" y2="105"/>
+            <line x1="450" y1="260" x2="160" y2="395"/><line x1="450" y1="260" x2="720" y2="400"/>
+            <line x1="180" y1="120" x2="710" y2="105"/><line x1="160" y1="395" x2="720" y2="400"/>
+          </g>
+          <g class="node center"><circle cx="450" cy="260" r="74"/><text x="450" y="250">Kenyan Farmers</text><text x="450" y="274">Water Story</text></g>
+          <g class="node blue"><circle cx="180" cy="120" r="60"/><text x="180" y="115">Moderate</text><text x="180" y="137">Democrats</text></g>
+          <g class="node purple"><circle cx="710" cy="105" r="66"/><text x="710" y="99">Climate</text><text x="710" y="121">Resilience</text></g>
+          <g class="node orange"><circle cx="160" cy="395" r="58"/><text x="160" y="390">Campaign</text><text x="160" y="412">Blueprint</text></g>
+          <g class="node green"><circle cx="720" cy="400" r="64"/><text x="720" y="394">Human-first</text><text x="720" y="416">Best Practice</text></g>
+        </svg>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,34 +1,26 @@
-# KNIP — Sprint 4.1 Narrative DNA Analyzer
+# KNIP RC3 — Approved Dashboard + Live Intelligence
 
-KNIP transforms authentic stories into explainable strategic intelligence. Sprint 4.1 adds a deterministic Narrative DNA engine that extracts human values, emotional signals, themes, beneficiaries, trust signals, evidence quality, narrative strength, and strategic risk.
+RC3 preserves the RC2 FastAPI, Docker, GDELT, Census, RSS and Research Agent foundation and replaces the Executive Home with the approved KNIP dashboard layout.
 
 ## Run
 
-```powershell
-npm.cmd install
-npm.cmd start
-```
+1. Copy `backend/.env.example` to `backend/.env` if `.env` does not exist.
+2. Run `docker compose up --build`.
+3. Open `http://localhost:8080`.
+4. API documentation: `http://localhost:8000/docs`.
 
-Open `http://localhost:3000`, choose a story, add evidence, and click **Run analysis**.
+## Visible RC3 capability
 
-## Verify
+- Approved dark-navigation Executive Home
+- Five since-last-login KPI cards
+- Priority Decision workspace
+- Full AI Advisory Board panel
+- Emerging Intelligence
+- Active Campaigns
+- Institutional Learning
+- Organization Health
+- Recommended Next Actions
+- Existing modules from RC2 remain available
+- Dashboard hydrates through `/api/dashboard` with fallback data
 
-```powershell
-npm.cmd run verify
-```
-
-### Sprint 5.1 — Audience Intelligence
-
-KNIP now converts Narrative DNA into explainable audience recommendations. Each profile includes shared values, relevant themes, preferred channels, trusted messengers, recommended framing, risk, opportunity, and ranked story matches.
-
-
-## Sprint 7.2 — AI Campaign Strategist
-Campaign Planner with Ruby strategic recommendations, objectives, risks, framing, channels, messengers, dependencies, budgets, complexity and explainability.
-
-
-### Sprint 8 — Institutional Learning Engine
-KNIP now captures decisions, campaign outcomes, reusable patterns, and lessons learned so future recommendations can be grounded in organizational memory.
-
-
-## Sprint 9 — AI Advisory Board
-KNIP now compares Shani, Ruby, Amit, and CTA perspectives, identifies consensus and tensions, and produces a synthesized recommendation while preserving human executive authority.
+No production persistence, authentication, scheduling, or LLM inference is included yet.

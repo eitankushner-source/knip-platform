@@ -1,16 +1,19 @@
 services:
-  knip:
-    build: .
-    container_name: knip-platform
+  api:
+    build: ./backend
+    env_file:
+      - ./backend/.env
     ports:
-      - "3000:3000"
-    environment:
-      PORT: 3000
-      KNIP_ENV: development
-      KNIP_DATA_FILE: /app/data/database.json
-    volumes:
-      - knip_data:/app/data
+      - "8000:8000"
     restart: unless-stopped
 
-volumes:
-  knip_data:
+  ui:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped

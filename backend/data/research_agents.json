@@ -1,0 +1,34 @@
+[
+  {
+    "id": "global-authentic-israel-voices",
+    "name": "Global Authentic Israel Voices",
+    "mission": "Find non-influencer, first-person accounts describing a positive, concrete impact from Israel, Israeli people, technology, medicine, culture, or civil society.",
+    "query": "(Israel OR Israeli) (helped OR impact OR changed OR saved OR improved) -influencer -official",
+    "audiences": ["Moderate Democrats", "Young adults", "Civic leaders"],
+    "cadence": "Daily"
+  },
+  {
+    "id": "israeli-grassroots-voices",
+    "name": "Israeli Grassroots Voices",
+    "mission": "Identify authentic grassroots stories reflecting Israel's diversity, democracy, resilience, pluralism, and civil society.",
+    "query": "Israel (grassroots OR volunteer OR coexistence OR pluralism OR civil society OR community)",
+    "audiences": ["Moderate Democrats", "Jewish young adults", "Progressive faith communities"],
+    "cadence": "Daily"
+  },
+  {
+    "id": "israeli-impact-innovation",
+    "name": "Israeli Impact Innovation",
+    "mission": "Find Israeli technologies and projects with a direct human impact and match them to U.S. demographic audiences.",
+    "query": "(Israeli technology OR Israel innovation) (farmers OR patients OR water OR climate OR health OR disability OR education)",
+    "audiences": ["Sustainability advocates", "Healthcare professionals", "Young professionals"],
+    "cadence": "Sunday-Friday"
+  },
+  {
+    "id": "pro-israel-organization-monitor",
+    "name": "Pro-Israel Organization Monitor",
+    "mission": "Track North American pro-Israel organizations and assess whether campaigns build positive narratives, change perceptions, and align with Kerem's mission.",
+    "query": "(pro-Israel OR Israel advocacy) (campaign OR initiative OR narrative OR storytelling) (United States OR Canada)",
+    "audiences": ["Kerem leadership", "Funders", "Partner organizations"],
+    "cadence": "Daily"
+  }
+]
