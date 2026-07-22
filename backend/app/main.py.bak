@@ -14,7 +14,6 @@ from app.connectors.gdelt import GdeltConnector
 from app.connectors.research_agents import ResearchAgentConnector
 from app.connectors.rss import RssConnector
 from app.models import AudienceMatch, IntelligenceItem, NormalizedStory, SourceRecord
-from app.services.advisory_board import build_advisory_board, challenge_advisory_board
 from app.services.dashboard import DashboardService
 
 settings = get_settings()
@@ -409,41 +408,60 @@ def build_dashboard_payload(stories: list[NormalizedStory] | None = None, live: 
     story_list = list(stories or [])
     eligible = [story for story in story_list if getattr(story, 'eligibleForExecutiveUse', False)]
     source = 'LIVE' if live is None and story_list else ('LIVE' if live else 'FALLBACK')
-    fallback = not eligible
-    priority = eligible[0] if eligible else None
-    best_match = priority.bestAudienceMatch if priority else None
-    advisory_board, advisory_consensus, minority_opinion, decision_readiness = build_advisory_board(priority, source if not fallback else 'FALLBACK')
+    if not eligible:
+        return {
+            'fallback': True,
+            'source': source,
+            'sourceMode': 'FALLBACK',
+            'metrics': {'storiesValidated': {'value': len(story_list) or 4, 'trend': 'FALLBACK'}},
+            'priorityDecision': {
+                'title': 'Amplify Story: Kenyan Farmers Using Israeli Water Innovation',
+                'summary': 'A verified human-impact story with strong relevance to climate resilience, food security, and moderate Democratic audiences.',
+                'audienceMatch': 82,
+                'evidenceQuality': 92,
+                'strategicImpact': 'High',
+                'strategicImpactScore': 88,
+                'readiness': 96,
+                'readinessState': 'READY',
+                'approvedImpact': 'Potential reach and engagement require human validation before publication.',
+                'delayImpact': 'Opportunity freshness declines as the news cycle advances.',
+                'sourceUrl': None,
+                'connector': None,
+                'bestAudienceName': 'Moderate Democrats',
+                'audienceMatchScore': 82,
+                'audienceConfidence': 78,
+                'audienceReasons': ['Fallback audience profile.'],
+                'audienceDataMode': 'RULE_BASED',
+            },
+        }
 
-    payload = {
-        'fallback': fallback,
+    priority = eligible[0]
+    best_match = priority.bestAudienceMatch
+    return {
+        'fallback': False,
         'source': source,
-        'sourceMode': 'FALLBACK' if fallback else 'LIVE',
-        'metrics': {'storiesValidated': {'value': len(eligible) if eligible else len(story_list) or 4, 'trend': source}},
+        'sourceMode': 'LIVE',
+        'metrics': {'storiesValidated': {'value': len(eligible), 'trend': source}},
         'priorityDecision': {
-            'title': priority.title if priority else 'Amplify Story: Kenyan Farmers Using Israeli Water Innovation',
-            'summary': priority.summary if priority else 'A verified human-impact story with strong relevance to climate resilience, food security, and moderate Democratic audiences.',
-            'audienceMatch': int(round(priority.audienceMatchScore or 82)) if priority else 82,
-            'evidenceQuality': int(priority.evidenceQuality) if priority else 92,
-            'strategicImpact': 'High' if priority and priority.relevanceScore >= 80 else 'Medium',
-            'strategicImpactScore': int(priority.relevanceScore) if priority else 88,
-            'readiness': int(priority.relevanceScore * 0.95) if priority else 96,
-            'readinessState': priority.status if priority else 'READY',
+            'title': priority.title,
+            'summary': priority.summary,
+            'audienceMatch': int(round(priority.audienceMatchScore or min(99, max(70, int(priority.relevanceScore * 0.9))))),
+            'evidenceQuality': int(priority.evidenceQuality),
+            'strategicImpact': 'High' if priority.relevanceScore >= 80 else 'Medium',
+            'strategicImpactScore': int(priority.relevanceScore),
+            'readiness': int(priority.relevanceScore * 0.95),
+            'readinessState': priority.status,
             'approvedImpact': 'Potential reach and engagement require human validation before publication.',
             'delayImpact': 'Opportunity freshness declines as the news cycle advances.',
-            'sourceUrl': priority.sourceUrl if priority else None,
-            'connector': priority.connector if priority else None,
+            'sourceUrl': priority.sourceUrl,
+            'connector': priority.connector,
             'bestAudienceName': best_match.audienceName if best_match else 'Moderate Democrats',
-            'audienceMatchScore': int(round(best_match.matchScore)) if best_match else 82,
-            'audienceConfidence': int(round(best_match.confidence)) if best_match else 78,
-            'audienceReasons': best_match.reasons if best_match else ['Fallback audience profile.'],
+            'audienceMatchScore': int(round(best_match.matchScore)) if best_match else 0,
+            'audienceConfidence': int(round(best_match.confidence)) if best_match else 0,
+            'audienceReasons': best_match.reasons if best_match else [],
             'audienceDataMode': best_match.dataMode if best_match else 'RULE_BASED',
         },
-        'advisoryBoard': [item.model_dump(mode='json') for item in advisory_board],
-        'advisoryConsensus': advisory_consensus.model_dump(mode='json'),
-        'minorityOpinion': minority_opinion,
-        'decisionReadiness': decision_readiness,
     }
-    return payload
 
 
 @app.get("/api/health")
@@ -488,40 +506,6 @@ async def story_audiences(story_id: str) -> dict:
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
     return {"storyId": story_id, "audienceMatches": [match.model_dump(mode="json") for match in story.audienceMatches], "bestAudienceMatch": story.bestAudienceMatch.model_dump(mode="json") if story.bestAudienceMatch else None, "audienceDataMode": story.audienceDataMode}
-
-
-@app.get("/api/advisory-board")
-async def advisory_board() -> dict:
-    stories = await aggregate_story_intelligence(limit=20)
-    priority = stories[0] if stories else None
-    board, consensus, minority_opinion, decision_readiness = build_advisory_board(priority, 'LIVE' if priority else 'FALLBACK')
-    return {
-        "advisoryBoard": [item.model_dump(mode='json') for item in board],
-        "advisoryConsensus": consensus.model_dump(mode='json'),
-        "minorityOpinion": minority_opinion,
-        "decisionReadiness": decision_readiness,
-        "sourceMode": consensus.sourceMode,
-    }
-
-
-@app.get("/api/advisory-board/consensus")
-async def advisory_board_consensus() -> dict:
-    stories = await aggregate_story_intelligence(limit=20)
-    priority = stories[0] if stories else None
-    _, consensus, minority_opinion, decision_readiness = build_advisory_board(priority, 'LIVE' if priority else 'FALLBACK')
-    return {
-        "consensus": consensus.model_dump(mode='json'),
-        "minorityOpinion": minority_opinion,
-        "decisionReadiness": decision_readiness,
-    }
-
-
-@app.post("/api/advisory-board/challenge")
-async def advisory_board_challenge(payload: dict) -> dict:
-    stories = await aggregate_story_intelligence(limit=20)
-    priority = stories[0] if stories else None
-    challenge = payload.get('challenge', '') if isinstance(payload, dict) else ''
-    return challenge_advisory_board(challenge, priority, 'LIVE' if priority else 'FALLBACK')
 
 
 @app.get("/api/demographics/states")

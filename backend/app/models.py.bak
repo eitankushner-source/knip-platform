@@ -71,36 +71,6 @@ class NormalizedStory(BaseModel):
     status: str = 'REVIEW'
 
 
-class AdvisorRecommendation(BaseModel):
-    advisorId: str
-    advisorName: str
-    role: str
-    recommendation: str
-    headline: str
-    reasoning: str
-    evidence: list[str] = []
-    risks: list[str] = []
-    assumptions: list[str] = []
-    confidence: float = Field(ge=0, le=100)
-    perspectiveLabel: str
-    direction: str
-    generatedAt: datetime
-    sourceMode: str = 'RULE_BASED'
-
-
-class AdvisoryConsensus(BaseModel):
-    consensusRecommendation: str
-    consensusConfidence: float = Field(ge=0, le=100)
-    agreementCount: int
-    dissentCount: int
-    majorityReason: str
-    minorityOpinion: str
-    unresolvedQuestions: list[str] = []
-    decisionReadiness: str
-    generatedAt: datetime
-    sourceMode: str = 'RULE_BASED'
-
-
 class ConnectorStatus(BaseModel):
     id: str
     name: str
