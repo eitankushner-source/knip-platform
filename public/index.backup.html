@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101828">
+  <title>KNIP Executive Workspace</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="appShell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <div class="brandBlock">
+        <p class="eyebrow">KEREM ALLIANCE</p>
+        <h1>KNIP</h1>
+        <p>Narrative Intelligence Platform</p>
+      </div>
+      <nav id="primaryNav" class="primaryNav">
+        <a href="#/executive" data-route="executive"><span>⌂</span>Executive Decision Center</a>
+        <a href="#/stories" data-route="stories"><span>▤</span>Story Repository</a>
+        <a href="#/decisions" data-route="decisions"><span>◇</span>Decision Center</a>
+        <a href="#/advisory" data-route="advisory"><span>◈</span>AI Advisory Board</a>
+        <a href="#/audiences" data-route="audiences"><span>◎</span>Audience Intelligence</a>
+        <a href="#/campaigns" data-route="campaigns"><span>↗</span>Campaign Lab</a>
+        <a href="#/research" data-route="research"><span>▥</span>Research Archive</a>
+        <a href="#/learning" data-route="learning"><span>◫</span>Institutional Learning</a>
+        <a href="#/admin" data-route="admin"><span>⚙</span>Administration</a>
+      </nav>
+      <div class="sidebarFooter">
+        <div id="health" class="systemStatus">Checking system…</div>
+        <small>Release 0.9 · AI Advisory Board</small>
+      </div>
+    </aside>
+
+    <div class="appFrame">
+      <header class="commandBar">
+        <div>
+          <p id="pageEyebrow" class="eyebrow dark">EXECUTIVE WORKSPACE</p>
+          <h2 id="pageTitle">Executive Decision Center</h2>
+        </div>
+        <div class="commandActions">
+          <button id="globalSearch" class="iconButton" type="button" aria-label="Search">⌕</button>
+          <button id="notifications" class="iconButton" type="button" aria-label="Notifications">◌</button>
+          <div class="userBadge" aria-label="Signed in user"><span>EK</span><div><strong>Executive</strong><small>Decision authority</small></div></div>
+        </div>
+      </header>
+
+      <main id="appContent" tabindex="-1"></main>
+    </div>
+  </div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

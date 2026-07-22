@@ -19,7 +19,7 @@ function esc(value = '') {
 }
 
 const routeConfig = {
-  executive: { title: 'Executive Home', eyebrow: 'EXECUTIVE HOME' },
+  executive: { title: 'Executive Decision Center', eyebrow: 'EXECUTIVE WORKSPACE' },
   stories: { title: 'Story Repository', eyebrow: 'STORY INTELLIGENCE' },
   decisions: { title: 'Decision Center', eyebrow: 'STRATEGIC DECISIONS' },
   advisory: { title: 'AI Advisory Board', eyebrow: 'EXECUTIVE INTELLIGENCE' },
@@ -44,208 +44,59 @@ function setActiveNavigation(route) {
   });
   $('#pageTitle').textContent = routeConfig[route].title;
   $('#pageEyebrow').textContent = routeConfig[route].eyebrow;
-  updateExecutiveHeader();
 }
 
-function updateExecutiveHeader() {
-  const greeting = $('#headerGreeting');
-  const dateLabel = $('#headerDate');
-  if (!greeting || !dateLabel) return;
-
-  const hour = new Date().getHours();
-  const salutation = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
-  greeting.textContent = `${salutation}, Ethan`;
-  dateLabel.textContent = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
-}
-
-async function executiveTemplate() {
-  const { data, fallback } = await loadExecutiveDashboard();
-  const metrics = data?.metrics || {};
-  const priority = data?.priorityDecision || {};
-  const advisoryRows = buildAdvisoryRows(priority, data?.source || 'demo');
-  const researchAgents = data?.researchAgents || {};
-  const campaignScore = Math.max(62, Math.min(95, Number(priority?.strategicImpactScore || 78)));
-  const healthScore = Math.max(70, Math.min(96, Number(priority?.readiness || 84)));
-  const summary = priority?.summary || 'A high-value story with strong evidence quality and clear strategic relevance.';
-
-  return `<section class="page executiveDashboard">
-    ${fallback ? `<div class="dashboardNotice" role="status">Demonstration fallback — the live dashboard request was unavailable, so KNIP is showing a local executive preview.</div>` : ''}
-    <section class="dashboardKpiRow" aria-label="Executive KPIs">
-      ${dashboardMetricCard('Stories Validated', formatMetricValue(metrics?.storiesValidated?.value), metrics?.storiesValidated?.trend || 'LIVE', 'blue')}
-      ${dashboardMetricCard('Campaigns Completed', formatMetricValue(metrics?.campaignsCompleted?.value), metrics?.campaignsCompleted?.trend || 'MVP', 'green')}
-      ${dashboardMetricCard('Narrative Emerging', formatMetricValue(metrics?.narrativesEmerging?.value), metrics?.narrativesEmerging?.trend || 'LIVE', 'purple')}
-      ${dashboardMetricCard('Audience Sentiment', formatMetricValue(metrics?.audienceSentiment?.value), metrics?.audienceSentiment?.trend || 'BASELINE', 'orange')}
-      ${dashboardMetricCard('Recommendation Changed', priority?.readinessState ? priority.readinessState : 'REVIEW', priority?.readiness ? `${priority.readiness}% readiness` : 'Updated this hour', 'teal')}
-    </section>
-
-    <article class="priorityDecisionCard">
-      <div class="priorityDecisionHeader">
-        <div>
-          <p class="eyebrow dark">TODAY'S PRIORITY DECISION</p>
-          <h3>${esc(priority?.title || 'Amplify a story with strong evidence quality')}</h3>
-          <p>${esc(summary)}</p>
-        </div>
-        <div class="priorityDecisionBadge">${esc(priority?.strategicImpact || 'High impact')}</div>
-      </div>
-      <div class="decisionMetaGrid">
-        <div class="decisionMetaTile"><span>Audience Match</span><strong>${priority?.audienceMatch ?? '—'}%</strong></div>
-        <div class="decisionMetaTile"><span>Evidence Quality</span><strong>${priority?.evidenceQuality ?? '—'}%</strong></div>
-        <div class="decisionMetaTile"><span>Strategic Impact</span><strong>${priority?.strategicImpactScore ?? '—'}</strong></div>
-        <div class="decisionMetaTile"><span>Readiness</span><strong>${priority?.readiness ?? '—'}%</strong></div>
-        <div class="decisionMetaTile"><span>Source</span><strong>${data?.source ? 'Live' : 'Demo'}</strong></div>
-      </div>
-      <div class="decisionOutcomeRow">
-        <div>
-          <h4>If Approved</h4>
-          <p>${esc(priority?.approvedImpact || 'The decision can unlock stronger narrative reach and faster campaign activation.')}</p>
-        </div>
-        <div>
-          <h4>If Delayed</h4>
-          <p>${esc(priority?.delayImpact || 'Opportunity freshness declines as the news cycle advances.')}</p>
-        </div>
-      </div>
-      <div class="dashboardActions">
-        <button class="primaryAction" type="button" data-go="advisory">Review Details</button>
-        <button class="primaryAction" type="button" data-go="campaigns">Approve</button>
-        <button class="secondaryButton" type="button" data-go="campaigns">Delegate or Modify</button>
-        <button class="ghostButton" type="button" data-go="stories">Challenge Recommendation</button>
+function executiveTemplate() {
+  return `<section class="page introSection">
+    <div>
+      <p class="eyebrow dark">GOOD MORNING</p>
+      <h3>Your strategic picture is ready.</h3>
+      <p>Review what needs attention, understand why it matters, and move the organization toward a clear decision.</p>
+    </div>
+    <button class="primaryAction" type="button" data-go="stories">Review story intelligence</button>
+  </section>
+  <section class="kpiGrid" aria-label="Executive metrics">
+    ${kpiCard('New Signals', '24', '+6 since yesterday', 'neutral')}
+    ${kpiCard('Stories Ready', '8', '3 high opportunity', 'positive')}
+    ${kpiCard('Awaiting Decision', '5', '2 require attention', 'warning')}
+    ${kpiCard('Campaigns Active', '3', 'All on track', 'positive')}
+    ${kpiCard('Narrative Health', '84%', 'Stable this week', 'positive')}
+    ${kpiCard('AI Confidence', '91%', 'Across open briefs', 'neutral')}
+  </section>
+  <section class="dashboardGrid">
+    <article class="panel spanTwo">
+      <div class="sectionHeader"><div><p class="eyebrow dark">DECISION QUEUE</p><h3>Items requiring executive attention</h3></div><button class="textButton" type="button" data-go="decisions">View all</button></div>
+      <div class="placeholderTable">
+        <div class="tableRow tableHead"><span>Priority</span><span>Story</span><span>Recommendation</span><span>Confidence</span></div>
+        ${decisionRow('brief_001', 'High', 'Israeli water technology', 'Approve', '92%')}
+        ${decisionRow('brief_002', 'Medium', 'Druze first responders', 'Research', '82%')}
+        ${decisionRow('brief_003', 'Normal', 'Israeli climate startup', 'Hold', '79%')}
       </div>
     </article>
-
-    <div class="dashboardLowerGrid">
-      <article class="dashboardPanel">
-        <div class="sectionHeader"><div><p class="eyebrow dark">AI ADVISORY BOARD</p><h3>Cross-functional perspective ready</h3></div><a class="textButton" href="#/advisory">View Full Deliberation</a></div>
-        <div class="advisoryBoardRows">
-          ${advisoryRows.map(row => `<div class="advisoryBoardRow">
-            <div>
-              <strong>${esc(row.name)}</strong>
-              <p>${esc(row.recommendation)}</p>
-            </div>
-            <span class="advisoryPerspective">${esc(row.perspective)}</span>
-            <div class="directionIndicator ${row.directionClass}">${esc(row.direction)}</div>
-          </div>`).join('')}
-        </div>
-        <div class="panelFooterLinks">
-          <a href="#/advisory">Transcript</a>
-          <a href="#/decisions">Decision brief</a>
-        </div>
-      </article>
-
-      <article class="dashboardPanel">
-        <div class="sectionHeader"><div><p class="eyebrow dark">EMERGING INTELLIGENCE</p><h3>Signals worth attention</h3></div></div>
-        <ul class="insightList">
-          <li>${esc(priority?.title || 'Priority story')} is gaining strength across audience and evidence signals.</li>
-          <li>${researchAgents?.enabled || 3} research agents are enabled and available for executive review.</li>
-          <li>${data?.source ? data.source : 'Local demo mode'} indicates the latest advisory context is current.</li>
-        </ul>
-      </article>
-
-      <article class="dashboardPanel">
-        <div class="sectionHeader"><div><p class="eyebrow dark">ACTIVE CAMPAIGNS</p><h3>Momentum by channel</h3></div></div>
-        <div class="campaignDonut" style="--progress:${campaignScore};">
-          <strong>${campaignScore}%</strong>
-          <span>on-track</span>
-        </div>
-        <div class="campaignLegend">
-          <div><span class="legendDot blue"></span>Strategic narrative</div>
-          <div><span class="legendDot green"></span>Audience activation</div>
-          <div><span class="legendDot purple"></span>Operations</div>
-        </div>
-      </article>
-
-      <article class="dashboardPanel">
-        <div class="sectionHeader"><div><p class="eyebrow dark">INSTITUTIONAL LEARNING</p><h3>Knowledge compounds</h3></div></div>
-        <div class="learningSnapshot">
-          <div><span>Configured agents</span><strong>${researchAgents?.configured || 4}</strong></div>
-          <div><span>Live agents</span><strong>${researchAgents?.enabled || 3}</strong></div>
-          <div><span>Decision readiness</span><strong>${priority?.readiness || 84}%</strong></div>
-        </div>
-      </article>
-
-      <article class="dashboardPanel healthPanel">
-        <div class="sectionHeader"><div><p class="eyebrow dark">ORGANIZATION HEALTH</p><h3>Confidence and trend</h3></div></div>
-        <div class="healthScoreRing">
-          <strong>${healthScore}</strong>
-          <span>Executive confidence</span>
-        </div>
-        <div class="healthTrend">
-          <div><span>Week</span><strong>▲ 8%</strong></div>
-          <div><span>Month</span><strong>▲ 12%</strong></div>
-          <div><span>Quarter</span><strong>▲ 17%</strong></div>
-        </div>
-      </article>
-    </div>
-
-    <article class="recommendedActionsCard">
-      <div class="sectionHeader"><div><p class="eyebrow dark">RECOMMENDED NEXT ACTIONS</p><h3>Move the decision forward</h3></div></div>
-      <div class="recommendedActions">
-        <a href="#/stories">Validate the evidence trail</a>
-        <a href="#/advisory">Align with the board narrative</a>
-        <a href="#/campaigns">Launch the draft campaign</a>
+    <article class="panel">
+      <div class="sectionHeader"><div><p class="eyebrow dark">PIPELINE</p><h3>Story flow</h3></div></div>
+      <div class="pipelineList">
+        ${pipelineStage('Signal', 24)}${pipelineStage('Story', 16)}${pipelineStage('Analyzing', 8)}${pipelineStage('Decision Ready', 5)}${pipelineStage('Campaign', 3)}
+      </div>
+    </article>
+    <article class="panel">
+      <div class="sectionHeader"><div><p class="eyebrow dark">AI ACTIVITY</p><h3>Advisory board</h3></div><span class="liveDot">Live</span></div>
+      <div class="advisorList">
+        ${advisor('Shani', 'Evidence review complete', 'Knowledge')}
+        ${advisor('Ruby', 'Strategic analysis in progress', 'Strategy')}
+        ${advisor('Amit', 'Operational readiness checked', 'Operations')}
+        ${advisor('CTA', 'Confidence model healthy', 'Technology')}
+      </div>
+    </article>
+    <article class="panel spanTwo">
+      <div class="sectionHeader"><div><p class="eyebrow dark">RECENT ACTIVITY</p><h3>Executive workspace timeline</h3></div></div>
+      <div class="timeline">
+        ${timelineItem('09:14', 'Ruby completed strategic analysis', 'Kenyan heart surgeons')}
+        ${timelineItem('08:59', 'Shani added new evidence', 'Druze first responders')}
+        ${timelineItem('08:33', 'Story moved to decision ready', 'Israeli climate startup')}
       </div>
     </article>
   </section>`;
-}
-
-function dashboardMetricCard(label, value, detail, tone) {
-  return `<article class="executiveMetricCard ${tone}"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(detail)}</small></article>`;
-}
-
-function formatMetricValue(value) {
-  if (value === null || value === undefined || value === '') return '—';
-  return String(value);
-}
-
-function buildAdvisoryRows(priority, sourceLabel) {
-  const title = priority?.title || 'the priority recommendation';
-  return [
-    { name: 'Ruby', perspective: 'Chief Strategy Officer', recommendation: `Advance a narrative that frames ${title.toLowerCase()} as a decision-ready story.`, direction: '↑', directionClass: 'positive' },
-    { name: 'Shani', perspective: 'Chief Knowledge Officer', recommendation: `Prioritize evidence quality and ensure the source trail remains auditable for ${sourceLabel}.`, direction: '→', directionClass: 'steady' },
-    { name: 'Amit', perspective: 'Chief Operations Officer', recommendation: `Package the next action as a fast-moving campaign sprint with explicit owner handoff.`, direction: '↑', directionClass: 'positive' },
-    { name: 'CTA', perspective: 'Chief Technology Architect', recommendation: `Scale the recommendation through reusable content blocks and monitoring dashboards.`, direction: '↑', directionClass: 'positive' },
-    { name: 'Devil’s Advocate', perspective: 'AI Skeptic', recommendation: `Challenge adoption until the audience fit and risk frame are clearly documented.`, direction: '↓', directionClass: 'negative' }
-  ];
-}
-
-async function loadExecutiveDashboard() {
-  try {
-    const data = await api('/api/dashboard');
-    return { data, fallback: false };
-  } catch (error) {
-    return {
-      data: {
-        generatedAt: new Date().toISOString(),
-        lastLogin: 'Previous session',
-        metrics: {
-          storiesValidated: { value: 4, trend: 'DEMO' },
-          campaignsCompleted: { value: 2, trend: 'DEMO' },
-          narrativesEmerging: { value: 3, trend: 'DEMO' },
-          audienceSentiment: { value: '+4%', trend: 'DEMO' }
-        },
-        priorityDecision: {
-          title: 'Amplify a story with strong evidence quality',
-          summary: 'A verified human-impact story with strong audience relevance and clear executive urgency.',
-          audienceMatch: 94,
-          evidenceQuality: 92,
-          strategicImpact: 'High',
-          strategicImpactScore: 88,
-          readiness: 82,
-          readinessState: 'REVIEW',
-          approvedImpact: 'The decision can unlock stronger narrative reach and faster campaign activation.',
-          delayImpact: 'Opportunity freshness declines as the news cycle advances.'
-        },
-        researchAgents: { configured: 4, enabled: 3 },
-        source: 'demonstration fallback'
-      },
-      fallback: true,
-      error
-    };
-  }
 }
 
 function kpiCard(label, value, detail, tone) {
@@ -338,7 +189,7 @@ async function renderRoute() {
   const route = currentRoute();
   setActiveNavigation(route);
   const content = $('#appContent');
-  content.innerHTML = route === 'executive' ? await executiveTemplate() : route === 'stories' ? storyRepositoryTemplate() : route === 'decisions' ? decisionCenterTemplate() : route === 'advisory' ? advisoryBoardTemplate() : route === 'audiences' ? audienceIntelligenceTemplate() : route === 'campaigns' ? campaignPlannerTemplate() : route === 'learning' ? learningWorkspaceTemplate() : comingSoonTemplate(route);
+  content.innerHTML = route === 'executive' ? executiveTemplate() : route === 'stories' ? storyRepositoryTemplate() : route === 'decisions' ? decisionCenterTemplate() : route === 'advisory' ? advisoryBoardTemplate() : route === 'audiences' ? audienceIntelligenceTemplate() : route === 'campaigns' ? campaignPlannerTemplate() : route === 'learning' ? learningWorkspaceTemplate() : comingSoonTemplate(route);
   content.focus();
   document.querySelectorAll('[data-go]').forEach(button => button.onclick = () => { location.hash = `#/${button.dataset.go}`; });
   document.querySelectorAll('[data-brief]').forEach(button => button.onclick = () => openDecision(button.dataset.brief));
@@ -411,9 +262,8 @@ function analysisHtml(analysis) {
 }
 
 window.addEventListener('hashchange', () => renderRoute().catch(console.error));
-$('#globalSearch')?.onclick = () => alert('Global search framework is ready for Sprint 3 implementation.');
-$('#notifications')?.onclick = () => alert('No new executive notifications.');
-$('#inbox')?.onclick = () => alert('No unread executive inbox items.');
+$('#globalSearch').onclick = () => alert('Global search framework is ready for Sprint 3 implementation.');
+$('#notifications').onclick = () => alert('No new executive notifications.');
 if (!location.hash) location.hash = '#/executive';
 loadSystemHealth();
 renderRoute().catch(error => { $('#appContent').innerHTML = `<section class="panel notice">${esc(error.message)}</section>`; });

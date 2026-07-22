@@ -16,17 +16,26 @@
         <p>Narrative Intelligence Platform</p>
       </div>
       <nav id="primaryNav" class="primaryNav">
-        <a href="#/executive" data-route="executive"><span>⌂</span>Executive Decision Center</a>
-        <a href="#/stories" data-route="stories"><span>▤</span>Story Repository</a>
-        <a href="#/decisions" data-route="decisions"><span>◇</span>Decision Center</a>
-        <a href="#/advisory" data-route="advisory"><span>◈</span>AI Advisory Board</a>
-        <a href="#/audiences" data-route="audiences"><span>◎</span>Audience Intelligence</a>
-        <a href="#/campaigns" data-route="campaigns"><span>↗</span>Campaign Lab</a>
-        <a href="#/research" data-route="research"><span>▥</span>Research Archive</a>
-        <a href="#/learning" data-route="learning"><span>◫</span>Institutional Learning</a>
-        <a href="#/admin" data-route="admin"><span>⚙</span>Administration</a>
+        <a href="#/executive" data-route="executive"><span>⌂</span>Home — Executive Home</a>
+        <a href="#/stories" data-route="stories"><span>▤</span>Discover — Find Opportunities</a>
+        <a href="#/audiences" data-route="audiences"><span>◎</span>Understand — Audience &amp; Narrative</a>
+        <a href="#/advisory" data-route="advisory"><span>◈</span>Decide — AI Advisory Board</a>
+        <a href="#/campaigns" data-route="campaigns"><span>↗</span>Execute — Campaign Lab</a>
+        <a href="#/learning" data-route="learning"><span>◫</span>Learn — Institutional Learning</a>
       </nav>
+
+      <div class="secondaryNav" aria-label="Secondary navigation">
+        <p class="secondaryNavTitle">Shortcuts</p>
+        <a href="#/executive">Executive Home</a>
+        <a href="#/stories">Saved Items</a>
+        <a href="#/decisions">Reports</a>
+        <a href="#/learning">Knowledge Graph</a>
+        <a href="#/admin">Settings</a>
+        <a href="#/executive">Help &amp; Support</a>
+      </div>
+
       <div class="sidebarFooter">
+        <button class="focusModeButton" type="button" aria-label="Focus mode">Focus Mode</button>
         <div id="health" class="systemStatus">Checking system…</div>
         <small>Release 0.9 · AI Advisory Board</small>
       </div>
@@ -34,14 +43,21 @@
 
     <div class="appFrame">
       <header class="commandBar">
-        <div>
+        <div class="commandBarIntro">
           <p id="pageEyebrow" class="eyebrow dark">EXECUTIVE WORKSPACE</p>
-          <h2 id="pageTitle">Executive Decision Center</h2>
+          <h2 id="pageTitle">Executive Home</h2>
+          <p id="headerGreeting" class="headerGreeting">Good day, Ethan</p>
+          <p id="headerDate" class="headerDate">Loading date…</p>
         </div>
         <div class="commandActions">
-          <button id="globalSearch" class="iconButton" type="button" aria-label="Search">⌕</button>
-          <button id="notifications" class="iconButton" type="button" aria-label="Notifications">◌</button>
-          <div class="userBadge" aria-label="Signed in user"><span>EK</span><div><strong>Executive</strong><small>Decision authority</small></div></div>
+          <label class="searchField" aria-label="Global KNIP search">
+            <span aria-hidden="true">⌕</span>
+            <input type="search" placeholder="Global KNIP search" aria-label="Global KNIP search">
+          </label>
+          <button id="notifications" class="iconButton" type="button" aria-label="Notifications">🔔</button>
+          <button id="inbox" class="iconButton" type="button" aria-label="Inbox">✉</button>
+          <div class="userBadge" aria-label="Signed in user"><span>EK</span><div><strong>Ethan</strong><small>Executive lead</small></div></div>
+          <button class="customizeButton" type="button">Customize Home</button>
         </div>
       </header>
 
