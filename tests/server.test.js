@@ -308,3 +308,12 @@ test('dual-runtime smoke assets are present for both entry UIs', async () => {
   assert.match(compose,/\n  ui:/);
   assert.match(nginx,/proxy_pass http:\/\/api:8000\/api\//);
 });
+
+test('docker root UI exposes Decision Center as a separate primary navigation item', async () => {
+  const {readFile}=await import('node:fs/promises');
+  const rootIndex=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  assert.match(rootIndex,/data-view="brief"/);
+  assert.match(rootIndex,/>Decision Center</);
+  assert.match(rootIndex,/>Executive Brief</);
+  assert.match(rootIndex,/>Executive Home</);
+});
