@@ -128,7 +128,7 @@ def test_fastapi_route_inventory_contains_baseline_endpoints():
         for route in app.routes
         if isinstance(route, APIRoute)
         for method in route.methods
-        if method in {'GET', 'POST'}
+        if method in {'GET', 'POST', 'PUT'}
     }
 
     canonical_required = {
@@ -153,6 +153,12 @@ def test_fastapi_route_inventory_contains_baseline_endpoints():
         ('GET', '/api/advisory-board'),
         ('GET', '/api/campaign-plans'),
         ('GET', '/api/campaign-plans/{plan_id}'),
+        ('GET', '/api/decisions'),
+        ('GET', '/api/decisions/{decision_id}'),
+        ('POST', '/api/decisions/{decision_id}/actions'),
+        ('GET', '/api/learning/{learning_id}'),
+        ('PUT', '/api/learning/{learning_id}'),
+        ('GET', '/api/learning-intelligence'),
     }
     assert compatibility_required.issubset(route_inventory)
 
@@ -173,10 +179,129 @@ def test_fastapi_baseline_smoke_endpoints_return_ok():
         '/api/audience-intelligence',
         '/api/advisory-board',
         '/api/campaign-plans',
+        '/api/decisions',
+        '/api/learning-intelligence',
     ]
     for path in checks:
         response = client.get(path)
         assert response.status_code == 200, f'{path} should return 200'
+
+
+def test_decisions_list_compatibility_shape():
+    response = client.get('/api/decisions')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'decisionBriefs' in payload
+    assert 'executiveDecisions' in payload
+    assert isinstance(payload['decisionBriefs'], list)
+    assert isinstance(payload['executiveDecisions'], list)
+    if payload['decisionBriefs']:
+        brief = payload['decisionBriefs'][0]
+        assert 'id' in brief
+        assert 'title' in brief
+        assert 'recommendation' in brief
+        assert 'confidence' in brief
+        assert 'status' in brief
+
+
+def test_decision_detail_compatibility_shape_and_404():
+    listing = client.get('/api/decisions')
+    assert listing.status_code == 200
+    briefs = listing.json()['decisionBriefs']
+    assert briefs
+    decision_id = briefs[0]['id']
+
+    response = client.get(f'/api/decisions/{decision_id}')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'brief' in payload
+    assert 'decisions' in payload
+    assert payload['brief']['id'] == decision_id
+    assert isinstance(payload['decisions'], list)
+
+    missing = client.get('/api/decisions/does-not-exist')
+    assert missing.status_code == 404
+    assert missing.json()['detail'] == 'Decision brief not found'
+
+
+def test_decision_action_compatibility_shape_and_unknown_id_404():
+    listing = client.get('/api/decisions')
+    assert listing.status_code == 200
+    briefs = listing.json()['decisionBriefs']
+    assert briefs
+    decision_id = briefs[0]['id']
+
+    response = client.post(
+        f'/api/decisions/{decision_id}/actions',
+        json={'action': 'APPROVE', 'note': 'Approved in compatibility test.'},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'decision' in payload
+    assert 'brief' in payload
+    assert 'learningRecord' in payload
+    assert payload['decision']['briefId'] == decision_id
+    assert payload['brief']['id'] == decision_id
+
+    missing = client.post('/api/decisions/does-not-exist/actions', json={'action': 'APPROVE'})
+    assert missing.status_code == 404
+    assert missing.json()['detail'] == 'Decision brief not found'
+
+
+def test_learning_detail_compatibility_shape_and_404():
+    listing = client.get('/api/decisions')
+    assert listing.status_code == 200
+    briefs = listing.json()['decisionBriefs']
+    assert briefs
+    brief_id = briefs[0]['id']
+
+    response = client.get(f'/api/learning/{brief_id}')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'learningRecord' in payload
+    assert payload['learningRecord']['briefId'] == brief_id
+
+    missing = client.get('/api/learning/does-not-exist')
+    assert missing.status_code == 404
+    assert missing.json()['detail'] == 'Learning record not found'
+
+
+def test_learning_update_compatibility_shape_and_preservation():
+    listing = client.get('/api/decisions')
+    assert listing.status_code == 200
+    briefs = listing.json()['decisionBriefs']
+    assert briefs
+    brief_id = briefs[0]['id']
+
+    before = client.get(f'/api/learning/{brief_id}')
+    assert before.status_code == 200
+    original = before.json()['learningRecord']
+
+    response = client.put(
+        f'/api/learning/{brief_id}',
+        json={'outcome': 'SUCCESS', 'lessonsLearned': 'Compatibility path verified.'},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'learningRecord' in payload
+    updated = payload['learningRecord']
+    assert updated['briefId'] == brief_id
+    assert updated['id'] == original['id']
+    assert updated['outcome'] == 'SUCCESS'
+    assert updated['lessonsLearned'] == 'Compatibility path verified.'
+
+
+def test_learning_intelligence_compatibility_shape():
+    response = client.get('/api/learning-intelligence')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'intelligence' in payload
+    intelligence = payload['intelligence']
+    assert 'metrics' in intelligence
+    assert 'records' in intelligence
+    assert 'insights' in intelligence
+    assert 'reusablePatterns' in intelligence
+    assert isinstance(intelligence['records'], list)
 
 
 def test_audience_intelligence_compatibility_shape():

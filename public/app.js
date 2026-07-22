@@ -4,7 +4,7 @@ let selectedCampaignId = null;
 
 const ROUTE_STATUS = Object.freeze({
   executive: 'LIVE',
-  stories: 'LIVE',
+  stories: 'PREVIEW',
   decisions: 'LIVE',
   advisory: 'LIVE',
   audiences: 'LIVE',
@@ -17,14 +17,14 @@ const ROUTE_STATUS = Object.freeze({
 const ENDPOINT_CAPABILITY_MAP = Object.freeze({
   executiveDashboard: { method: 'GET', path: '/api/dashboard', mode: 'LIVE|FALLBACK', consumer: 'executiveTemplate' },
   systemHealth: { method: 'GET', path: '/api/health', mode: 'LIVE', consumer: 'loadSystemHealth' },
-  storyList: { method: 'GET', path: '/api/stories', mode: 'LIVE', consumer: 'loadStories' },
-  storyDetail: { method: 'GET', path: '/api/stories/{id}', mode: 'LIVE', consumer: 'renderDetail' },
-  storyCreate: { method: 'POST', path: '/api/stories', mode: 'LIVE', consumer: 'bindStoryForm' },
-  storyApprove: { method: 'PATCH', path: '/api/stories/{id}', mode: 'LIVE', consumer: 'renderDetail' },
-  storyAnalyze: { method: 'POST', path: '/api/stories/{id}/analyze', mode: 'LIVE', consumer: 'renderDetail' },
-  storyEvidenceCreate: { method: 'POST', path: '/api/stories/{id}/evidence', mode: 'LIVE', consumer: 'renderDetail' },
-  storyAuditTrail: { method: 'GET', path: '/api/audit', mode: 'LIVE', consumer: 'loadStories' },
-  storyReset: { method: 'POST', path: '/api/reset', mode: 'LIVE', consumer: 'loadStories' },
+  storyList: { method: 'GET', path: '/api/stories', mode: 'PREVIEW', consumer: 'loadStories' },
+  storyDetail: { method: 'GET', path: '/api/stories/{id}', mode: 'PREVIEW', consumer: 'renderDetail' },
+  storyCreate: { method: 'POST', path: '/api/stories', mode: 'PREVIEW', consumer: 'bindStoryForm' },
+  storyApprove: { method: 'PATCH', path: '/api/stories/{id}', mode: 'PREVIEW', consumer: 'renderDetail' },
+  storyAnalyze: { method: 'POST', path: '/api/stories/{id}/analyze', mode: 'PREVIEW', consumer: 'renderDetail' },
+  storyEvidenceCreate: { method: 'POST', path: '/api/stories/{id}/evidence', mode: 'PREVIEW', consumer: 'renderDetail' },
+  storyAuditTrail: { method: 'GET', path: '/api/audit', mode: 'PREVIEW', consumer: 'loadStories' },
+  storyReset: { method: 'POST', path: '/api/reset', mode: 'PREVIEW', consumer: 'loadStories' },
   decisionQueue: { method: 'GET', path: '/api/decisions', mode: 'LIVE', consumer: 'loadDecisions' },
   decisionBrief: { method: 'GET', path: '/api/decisions/{id}', mode: 'LIVE', consumer: 'renderDecisionBrief' },
   decisionAction: { method: 'POST', path: '/api/decisions/{id}/actions', mode: 'LIVE', consumer: 'renderDecisionBrief' },
@@ -48,7 +48,7 @@ async function api(path, options = {}) {
     ...options
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || 'Request failed');
+  if (!response.ok) throw new Error(payload.error || payload.detail || 'Request failed');
   return payload;
 }
 
@@ -380,11 +380,10 @@ async function renderRoute() {
   const route = currentRoute();
   setActiveNavigation(route);
   const content = $('#appContent');
-  content.innerHTML = route === 'executive' ? await executiveTemplate() : route === 'stories' ? storyRepositoryTemplate() : route === 'decisions' ? decisionCenterTemplate() : route === 'advisory' ? advisoryBoardTemplate() : route === 'audiences' ? audienceIntelligenceTemplate() : route === 'campaigns' ? campaignPlannerTemplate() : route === 'learning' ? learningWorkspaceTemplate() : comingSoonTemplate(route);
+  content.innerHTML = route === 'executive' ? await executiveTemplate() : route === 'decisions' ? decisionCenterTemplate() : route === 'advisory' ? advisoryBoardTemplate() : route === 'audiences' ? audienceIntelligenceTemplate() : route === 'campaigns' ? campaignPlannerTemplate() : route === 'learning' ? learningWorkspaceTemplate() : comingSoonTemplate(route);
   content.focus();
   document.querySelectorAll('[data-go]').forEach(button => button.onclick = () => { location.hash = `#/${button.dataset.go}`; });
   document.querySelectorAll('[data-brief]').forEach(button => button.onclick = () => openDecision(button.dataset.brief));
-  if (route === 'stories') await loadStories();
   if (route === 'decisions') { const id = location.hash.split('/')[2]; await loadDecisions(id); }
   if (route === 'advisory') { const id = location.hash.split('/')[2]; await loadAdvisoryBoard(id); }
   if (route === 'audiences') await loadAudienceIntelligence();

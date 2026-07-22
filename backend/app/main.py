@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import asyncio
 import re
 from html import unescape
@@ -23,7 +23,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -34,6 +34,9 @@ rss = RssConnector()
 research_agents = ResearchAgentConnector()
 _ADVISORY_SESSION_CACHE: dict[str, dict] = {}
 _CAMPAIGN_PLAN_CACHE: dict[str, dict] = {}
+_DECISION_BRIEF_CACHE: dict[str, dict] = {}
+_LEARNING_RECORD_CACHE: dict[str, dict] = {}
+_EXECUTIVE_DECISIONS: list[dict] = []
 
 AUDIENCE_PROFILES = [
     {'id': 'aud_mod_dems', 'name': 'Moderate Democrats', 'signals': ['democracy', 'bipartisan cooperation', 'climate resilience', 'healthcare', 'humanitarian impact', 'pragmatic u.s.–israel cooperation'], 'values': ['cooperation', 'pragmatism', 'shared values'], 'geography': ['United States'], 'channels': ['email', 'digital video'], 'messengers': ['community leaders']},
@@ -592,6 +595,296 @@ def build_campaign_plans(stories: list[NormalizedStory] | None = None) -> list[d
     return plans
 
 
+def _priority_from_score(score: int) -> str:
+    if score >= 88:
+        return 'HIGH'
+    if score >= 78:
+        return 'MEDIUM'
+    return 'NORMAL'
+
+
+def _recommendation_from_score(score: int) -> str:
+    if score >= 88:
+        return 'APPROVE'
+    if score >= 72:
+        return 'RESEARCH'
+    return 'HOLD'
+
+
+def _build_explainability(story: NormalizedStory, confidence: int, audience_confidence: int) -> dict:
+    evidence_strength = int(round(story.evidenceQuality))
+    audience_alignment = int(round(story.audienceMatchScore or 78))
+    strategic_value = int(round(story.relevanceScore))
+    operational_readiness = int(round((confidence * 0.6) + (story.authenticityScore * 0.4)))
+    return {
+        'drivers': [
+            {'label': 'Human impact', 'value': int(round(story.authenticityScore))},
+            {'label': 'Audience alignment', 'value': audience_alignment},
+            {'label': 'Strategic value', 'value': strategic_value},
+            {'label': 'Evidence strength', 'value': evidence_strength},
+            {'label': 'Operational readiness', 'value': operational_readiness},
+        ],
+        'why': 'The recommendation is driven by audience relevance, strategic impact, and evidence reliability with human oversight still required before publication.',
+        'conditions': [
+            'Verify at least one independent outcome source before public activation.',
+            'Confirm beneficiary consent for any public-facing testimonials.',
+            'Complete final framing review to keep the human beneficiary at the center.',
+        ],
+    }
+
+
+def build_decision_briefs(stories: list[NormalizedStory] | None = None) -> list[dict]:
+    story_list = list(stories or [])
+    briefs: list[dict] = []
+    now = datetime.now(timezone.utc)
+
+    if not story_list:
+        return [{
+            'id': 'brief_001',
+            'storyId': 'story_001',
+            'priority': 'HIGH',
+            'title': 'Israeli water technology helps drought-affected farmers',
+            'audience': 'Sustainability Leaders',
+            'recommendation': 'APPROVE',
+            'confidence': 90,
+            'status': 'AWAITING_DECISION',
+            'owner': 'Ethan Kushner',
+            'dueDate': (now + timedelta(days=3)).date().isoformat(),
+            'executiveSummary': 'A credible human-impact story connects practical innovation with climate resilience and beneficiary outcomes.',
+            'strategicAssessment': 'The story is operationally feasible and aligns with sustainability audiences when framed around measurable human impact.',
+            'opportunities': [
+                'Strong alignment with climate resilience audiences.',
+                'Clear beneficiary-centered narrative for executive use.',
+                'Campaign-ready across digital and partner channels.',
+            ],
+            'risks': [
+                'Quantitative outcomes require independent verification.',
+                'Framing should avoid promotional tone.',
+                'Permissions must be reconfirmed before publication.',
+            ],
+            'evidence': [
+                {
+                    'title': 'Representative field testimony',
+                    'claim': 'Beneficiaries reported improved resilience and practical agricultural outcomes.',
+                    'reliability': 82,
+                }
+            ],
+            'advisors': [
+                {
+                    'name': 'Shani',
+                    'role': 'Chief Knowledge Officer',
+                    'position': 'ADVANCE',
+                    'confidence': 88,
+                    'assessment': 'Evidence is decision-grade with one additional source recommended before broad amplification.',
+                },
+                {
+                    'name': 'Ruby',
+                    'role': 'Chief Strategy Officer',
+                    'position': 'APPROVE',
+                    'confidence': 92,
+                    'assessment': 'Audience relevance and strategic timing support advancement with safeguards.',
+                },
+                {
+                    'name': 'Amit',
+                    'role': 'Chief Operations Officer',
+                    'position': 'READY_WITH_CONDITIONS',
+                    'confidence': 85,
+                    'assessment': 'Execution is feasible as a pilot once consent and measurement checks are complete.',
+                },
+                {
+                    'name': 'CTA',
+                    'role': 'Technology & Explainability',
+                    'position': 'RELIABLE',
+                    'confidence': 86,
+                    'assessment': 'Recommendation confidence is supported by explainable audience and evidence signals.',
+                },
+            ],
+            'explainability': {
+                'drivers': [
+                    {'label': 'Human impact', 'value': 92},
+                    {'label': 'Audience alignment', 'value': 90},
+                    {'label': 'Strategic value', 'value': 88},
+                    {'label': 'Evidence strength', 'value': 82},
+                    {'label': 'Operational readiness', 'value': 84},
+                ],
+                'why': 'The recommendation is driven by high audience fit, measurable human impact, and decision-grade evidence quality.',
+                'conditions': [
+                    'Verify one independent quantitative outcome source.',
+                    'Confirm informed consent for public-facing testimony.',
+                    'Finalize beneficiary-first framing before publication.',
+                ],
+            },
+            'history': [
+                {
+                    'at': now.isoformat(),
+                    'actor': 'System',
+                    'action': 'Brief moved to Awaiting Decision',
+                }
+            ],
+        }]
+
+    for index, story in enumerate(story_list[:5], start=1):
+        advisors, _consensus, _minority_opinion, _decision_readiness = build_advisory_board(story, 'LIVE' if story else 'FALLBACK')
+        confidence = int(round((story.relevanceScore + story.evidenceQuality + (story.bestAudienceMatch.confidence if story.bestAudienceMatch else 78)) / 3))
+        recommendation = _recommendation_from_score(confidence)
+        priority = _priority_from_score(confidence)
+        due_date = (now + timedelta(days=index + 2)).date().isoformat()
+        audience_name = story.bestAudienceMatch.audienceName if story.bestAudienceMatch else 'Moderate Democrats'
+        audience_confidence = int(round(story.bestAudienceMatch.confidence)) if story.bestAudienceMatch else 78
+
+        brief = {
+            'id': f'brief_{story.id}',
+            'storyId': story.id,
+            'priority': priority,
+            'title': story.title,
+            'audience': audience_name,
+            'recommendation': recommendation,
+            'confidence': confidence,
+            'status': 'AWAITING_DECISION',
+            'owner': 'Ethan Kushner',
+            'dueDate': due_date,
+            'executiveSummary': story.summary,
+            'strategicAssessment': f'This story carries {story.strategicRelevanceLabel} relevance with a measurable audience-fit signal and explainable evidence quality.',
+            'opportunities': [
+                f'Best-fit audience: {audience_name}.',
+                'Human-centered framing enables nonpartisan engagement.',
+                'The narrative can be activated through a phased campaign pilot.',
+            ],
+            'risks': [
+                'Outcome claims require one additional independent source.',
+                'Framing must avoid promotional tone and preserve beneficiary agency.',
+                'Execution should include explicit monitoring during first release window.',
+            ],
+            'evidence': [
+                {
+                    'title': story.sourceName or 'Supporting evidence',
+                    'claim': story.summary,
+                    'reliability': int(round(story.evidenceQuality)),
+                }
+            ],
+            'advisors': [
+                {
+                    'name': item.advisorName,
+                    'role': item.role,
+                    'position': item.recommendation,
+                    'confidence': int(round(item.confidence)),
+                    'assessment': item.reasoning,
+                }
+                for item in advisors
+            ],
+            'explainability': _build_explainability(story, confidence, audience_confidence),
+            'history': [
+                {
+                    'at': now.isoformat(),
+                    'actor': 'System',
+                    'action': 'Brief moved to Awaiting Decision',
+                }
+            ],
+        }
+        briefs.append(brief)
+
+    return briefs
+
+
+def _status_for_action(action: str) -> str:
+    if action == 'APPROVE':
+        return 'APPROVED'
+    if action == 'REJECT':
+        return 'REJECTED'
+    if action == 'RESEARCH':
+        return 'RESEARCH_REQUESTED'
+    if action == 'ESCALATE':
+        return 'ESCALATED'
+    return 'ARCHIVED'
+
+
+def _default_learning_record(brief: dict) -> dict:
+    advisor_recommendations = {
+        item.get('name', 'Advisor'): item.get('position', 'RESEARCH')
+        for item in brief.get('advisors', [])
+    }
+    return {
+        'id': f"learning_{brief['id']}",
+        'briefId': brief['id'],
+        'storyId': brief['storyId'],
+        'storyTitle': brief['title'],
+        'decision': 'PENDING',
+        'decisionMaker': 'Pending',
+        'advisorRecommendations': advisor_recommendations,
+        'outcome': 'PENDING',
+        'lessonsLearned': '',
+        'decisionDate': None,
+        'updatedAt': datetime.now(timezone.utc).isoformat(),
+        'patterns': [],
+        'insights': [],
+        'campaignMetrics': None,
+    }
+
+
+def _sync_decision_cache(briefs: list[dict]) -> list[dict]:
+    synced: list[dict] = []
+    for brief in briefs:
+        cached = _DECISION_BRIEF_CACHE.get(brief['id'])
+        synced.append(cached if cached else brief)
+    _DECISION_BRIEF_CACHE.clear()
+    _DECISION_BRIEF_CACHE.update({item['id']: item for item in synced})
+    return synced
+
+
+def _ensure_learning_records(briefs: list[dict]) -> None:
+    for brief in briefs:
+        if brief['id'] not in _LEARNING_RECORD_CACHE:
+            _LEARNING_RECORD_CACHE[brief['id']] = _default_learning_record(brief)
+
+
+def _find_learning_record(learning_id: str) -> dict | None:
+    if learning_id in _LEARNING_RECORD_CACHE:
+        return _LEARNING_RECORD_CACHE[learning_id]
+    return next((item for item in _LEARNING_RECORD_CACHE.values() if item.get('id') == learning_id), None)
+
+
+def build_learning_intelligence(records: list[dict]) -> dict:
+    completed = [item for item in records if item.get('outcome') and item.get('outcome') != 'PENDING']
+    successful = [item for item in completed if item.get('outcome') == 'SUCCESS']
+    partial = [item for item in completed if item.get('outcome') == 'PARTIAL']
+    success_rate = 0
+    if completed:
+        success_rate = int(round(((len(successful) + (len(partial) * 0.5)) / len(completed)) * 100))
+
+    pattern_counts: dict[str, int] = {}
+    for item in records:
+        patterns = item.get('patterns') if isinstance(item.get('patterns'), list) else []
+        for pattern in patterns:
+            label = sanitize_text(pattern)
+            if label:
+                pattern_counts[label] = pattern_counts.get(label, 0) + 1
+
+    reusable_patterns = [
+        {'label': label, 'count': count}
+        for label, count in sorted(pattern_counts.items(), key=lambda pair: pair[1], reverse=True)
+    ]
+
+    insights: list[dict] = []
+    for item in records:
+        for insight in item.get('insights', []) if isinstance(item.get('insights'), list) else []:
+            cleaned = sanitize_text(insight)
+            if cleaned:
+                insights.append({'id': f"insight_{len(insights)}", 'text': cleaned})
+
+    return {
+        'metrics': {
+            'totalDecisions': len(records),
+            'completedCampaigns': len(completed),
+            'successRate': success_rate,
+            'lessonsCaptured': len([item for item in records if sanitize_text(item.get('lessonsLearned', ''))]),
+            'reusablePatterns': len(reusable_patterns),
+        },
+        'reusablePatterns': reusable_patterns,
+        'insights': insights[:8],
+        'records': records,
+    }
+
+
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok", "version": "0.2.0-rc2", "time": datetime.now(timezone.utc).isoformat()}
@@ -713,6 +1006,130 @@ async def campaign_plan_detail(plan_id: str) -> dict:
     if not campaign_plan:
         raise HTTPException(status_code=404, detail="Campaign plan not found")
     return {"campaignPlan": campaign_plan}
+
+
+@app.get('/api/decisions')
+async def decisions() -> dict:
+    stories = await aggregate_story_intelligence(limit=20)
+    decision_briefs = _sync_decision_cache(build_decision_briefs(stories))
+    _ensure_learning_records(decision_briefs)
+    return {'decisionBriefs': decision_briefs, 'executiveDecisions': _EXECUTIVE_DECISIONS}
+
+
+@app.get('/api/decisions/{decision_id}')
+async def decision_detail(decision_id: str) -> dict:
+    brief = _DECISION_BRIEF_CACHE.get(decision_id)
+    if not brief:
+        stories = await aggregate_story_intelligence(limit=20)
+        refreshed = _sync_decision_cache(build_decision_briefs(stories))
+        _ensure_learning_records(refreshed)
+        brief = _DECISION_BRIEF_CACHE.get(decision_id)
+    if not brief:
+        raise HTTPException(status_code=404, detail='Decision brief not found')
+    decisions = [item for item in _EXECUTIVE_DECISIONS if item.get('briefId') == decision_id]
+    return {'brief': brief, 'decisions': decisions}
+
+
+@app.post('/api/decisions/{decision_id}/actions')
+async def decision_action(decision_id: str, payload: dict) -> dict:
+    brief = _DECISION_BRIEF_CACHE.get(decision_id)
+    if not brief:
+        stories = await aggregate_story_intelligence(limit=20)
+        refreshed = _sync_decision_cache(build_decision_briefs(stories))
+        _ensure_learning_records(refreshed)
+        brief = _DECISION_BRIEF_CACHE.get(decision_id)
+    if not brief:
+        raise HTTPException(status_code=404, detail='Decision brief not found')
+
+    action = sanitize_text(payload.get('action') if isinstance(payload, dict) else '').upper()
+    if action not in {'APPROVE', 'REJECT', 'RESEARCH', 'ESCALATE', 'ARCHIVE'}:
+        raise HTTPException(status_code=400, detail='A valid decision action is required')
+
+    note = sanitize_text(payload.get('note') if isinstance(payload, dict) else '')
+    now = datetime.now(timezone.utc).isoformat()
+    decision = {
+        'id': f"decision_{sha256(f'{decision_id}:{now}:{action}'.encode()).hexdigest()[:12]}",
+        'briefId': brief['id'],
+        'storyId': brief.get('storyId'),
+        'action': action,
+        'note': note,
+        'actorId': 'usr_admin',
+        'createdAt': now,
+    }
+    _EXECUTIVE_DECISIONS.insert(0, decision)
+
+    brief['status'] = _status_for_action(action)
+    brief.setdefault('history', [])
+    brief['history'].insert(0, {
+        'at': now,
+        'actor': 'Ethan Kushner',
+        'action': f"Executive decision: {action}{f' - {note}' if note else ''}",
+    })
+
+    learning_record = _LEARNING_RECORD_CACHE.get(brief['id'])
+    if not learning_record:
+        learning_record = _default_learning_record(brief)
+        _LEARNING_RECORD_CACHE[brief['id']] = learning_record
+
+    advisor_recommendations = {
+        item.get('name', 'Advisor'): item.get('position', 'RESEARCH')
+        for item in brief.get('advisors', [])
+    }
+    learning_record['decision'] = action
+    learning_record['decisionMaker'] = 'Ethan Kushner'
+    learning_record['advisorRecommendations'] = advisor_recommendations
+    learning_record['decisionDate'] = now
+    learning_record['updatedAt'] = now
+
+    return {'decision': decision, 'brief': brief, 'learningRecord': learning_record}
+
+
+@app.get('/api/learning/{learning_id}')
+async def learning_detail(learning_id: str) -> dict:
+    if not _DECISION_BRIEF_CACHE:
+        stories = await aggregate_story_intelligence(limit=20)
+        decision_briefs = _sync_decision_cache(build_decision_briefs(stories))
+        _ensure_learning_records(decision_briefs)
+
+    learning_record = _find_learning_record(learning_id)
+    if not learning_record:
+        raise HTTPException(status_code=404, detail='Learning record not found')
+    return {'learningRecord': learning_record}
+
+
+@app.put('/api/learning/{learning_id}')
+async def learning_update(learning_id: str, payload: dict) -> dict:
+    if not _DECISION_BRIEF_CACHE:
+        stories = await aggregate_story_intelligence(limit=20)
+        decision_briefs = _sync_decision_cache(build_decision_briefs(stories))
+        _ensure_learning_records(decision_briefs)
+
+    learning_record = _find_learning_record(learning_id)
+    if not learning_record:
+        brief = _DECISION_BRIEF_CACHE.get(learning_id)
+        if not brief:
+            raise HTTPException(status_code=404, detail='Learning record not found')
+        learning_record = _default_learning_record(brief)
+        _LEARNING_RECORD_CACHE[brief['id']] = learning_record
+
+    if isinstance(payload, dict) and 'outcome' in payload:
+        outcome = sanitize_text(payload.get('outcome', '')).upper() or 'PENDING'
+        learning_record['outcome'] = outcome
+    if isinstance(payload, dict) and 'lessonsLearned' in payload:
+        learning_record['lessonsLearned'] = sanitize_text(payload.get('lessonsLearned', ''))
+    learning_record['updatedAt'] = datetime.now(timezone.utc).isoformat()
+
+    return {'learningRecord': learning_record}
+
+
+@app.get('/api/learning-intelligence')
+async def learning_intelligence() -> dict:
+    if not _DECISION_BRIEF_CACHE:
+        stories = await aggregate_story_intelligence(limit=20)
+        decision_briefs = _sync_decision_cache(build_decision_briefs(stories))
+        _ensure_learning_records(decision_briefs)
+    records = list(_LEARNING_RECORD_CACHE.values())
+    return {'intelligence': build_learning_intelligence(records)}
 
 
 @app.get("/api/demographics/states")
