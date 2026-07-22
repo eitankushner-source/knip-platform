@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from app.connectors.gdelt import GdeltConnector
 from app.connectors.research_agents import ResearchAgentConnector
 from app.connectors.rss import RssConnector
+from app.services.advisory_board import build_advisory_board
 
 
 class DashboardService:
@@ -50,6 +51,8 @@ class DashboardService:
             "audienceDataMode": priority.bestAudienceMatch.dataMode if priority and priority.bestAudienceMatch else "RULE_BASED",
         }
 
+        advisory_board, advisory_consensus, minority_opinion, decision_readiness = build_advisory_board(priority, source_label)
+
         return {
             "generatedAt": datetime.now(timezone.utc).isoformat(),
             "lastLogin": "Previous session",
@@ -60,6 +63,10 @@ class DashboardService:
                 "audienceSentiment": {"value": "+4%", "trend": "BASELINE"},
             },
             "priorityDecision": priority_payload,
+            "advisoryBoard": [item.model_dump(mode="json") for item in advisory_board],
+            "advisoryConsensus": advisory_consensus.model_dump(mode="json"),
+            "minorityOpinion": minority_opinion,
+            "decisionReadiness": decision_readiness,
             "researchAgents": {
                 "configured": len(self.research_agents.definitions()),
                 "enabled": len([a for a in self.research_agents.definitions() if a.enabled]),
