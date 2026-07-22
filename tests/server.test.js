@@ -252,3 +252,59 @@ test('AI Advisory Board workspace is wired into navigation', async () => {
   assert.match(source,/AREAS OF AGREEMENT/);
   assert.match(source,/SYNTHESIZED RECOMMENDATION/);
 });
+
+test('primary navigation keeps shortcuts and restores Decision Center visibility', async () => {
+  const {readFile}=await import('node:fs/promises');
+  const source=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
+  assert.match(source,/data-route="decisions"/);
+  assert.match(source,/>Reports</);
+  assert.match(source,/>Knowledge Graph/);
+  assert.match(source,/>Settings/);
+  assert.match(source,/data-route="research"/);
+  assert.match(source,/data-route="admin"/);
+  assert.match(source,/>Live<\/small>/);
+  assert.match(source,/>Preview<\/small>/);
+});
+
+test('frontend includes endpoint capability maps for audit traceability', async () => {
+  const {readFile}=await import('node:fs/promises');
+  const publicApp=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+  const legacyApi=await readFile(new URL('../api.js',import.meta.url),'utf8');
+  assert.match(publicApp,/ENDPOINT_CAPABILITY_MAP/);
+  assert.match(publicApp,/window\.KNIP_ENDPOINT_CAPABILITY_MAP/);
+  assert.match(legacyApi,/capabilityMap/);
+  assert.match(legacyApi,/window\.KNIPApi/);
+});
+
+test('mode A endpoint smoke returns expected success codes', async () => {
+  const checks = [
+    ['GET', '/api/health'],
+    ['GET', '/api/dashboard'],
+    ['GET', '/api/stories'],
+    ['GET', '/api/audience-intelligence'],
+    ['GET', '/api/campaign-plans'],
+    ['GET', '/api/decisions'],
+    ['GET', '/api/advisory-board'],
+    ['GET', '/api/learning-intelligence'],
+    ['GET', '/api/audit']
+  ];
+  for (const [method, path] of checks) {
+    const result = await call(method, path);
+    assert.equal(result.status, 200, `${method} ${path} should return 200`);
+  }
+});
+
+test('dual-runtime smoke assets are present for both entry UIs', async () => {
+  const {readFile}=await import('node:fs/promises');
+  const rootIndex=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  const publicIndex=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
+  const compose=await readFile(new URL('../docker-compose.yml',import.meta.url),'utf8');
+  const nginx=await readFile(new URL('../nginx.conf',import.meta.url),'utf8');
+  assert.match(rootIndex,/<script src="api\.js"><\/script>/);
+  assert.match(rootIndex,/<script src="app\.js"><\/script>/);
+  assert.match(publicIndex,/<script type="module" src="\/app\.js"><\/script>/);
+  assert.match(compose,/services:/);
+  assert.match(compose,/\n  api:/);
+  assert.match(compose,/\n  ui:/);
+  assert.match(nginx,/proxy_pass http:\/\/api:8000\/api\//);
+});

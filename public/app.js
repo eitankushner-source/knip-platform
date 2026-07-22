@@ -2,6 +2,46 @@ const $ = selector => document.querySelector(selector);
 let selectedId = null;
 let selectedCampaignId = null;
 
+const ROUTE_STATUS = Object.freeze({
+  executive: 'LIVE',
+  stories: 'LIVE',
+  decisions: 'LIVE',
+  advisory: 'LIVE',
+  audiences: 'LIVE',
+  campaigns: 'LIVE',
+  learning: 'LIVE',
+  research: 'PREVIEW',
+  admin: 'PREVIEW'
+});
+
+const ENDPOINT_CAPABILITY_MAP = Object.freeze({
+  executiveDashboard: { method: 'GET', path: '/api/dashboard', mode: 'LIVE|FALLBACK', consumer: 'executiveTemplate' },
+  systemHealth: { method: 'GET', path: '/api/health', mode: 'LIVE', consumer: 'loadSystemHealth' },
+  storyList: { method: 'GET', path: '/api/stories', mode: 'LIVE', consumer: 'loadStories' },
+  storyDetail: { method: 'GET', path: '/api/stories/{id}', mode: 'LIVE', consumer: 'renderDetail' },
+  storyCreate: { method: 'POST', path: '/api/stories', mode: 'LIVE', consumer: 'bindStoryForm' },
+  storyApprove: { method: 'PATCH', path: '/api/stories/{id}', mode: 'LIVE', consumer: 'renderDetail' },
+  storyAnalyze: { method: 'POST', path: '/api/stories/{id}/analyze', mode: 'LIVE', consumer: 'renderDetail' },
+  storyEvidenceCreate: { method: 'POST', path: '/api/stories/{id}/evidence', mode: 'LIVE', consumer: 'renderDetail' },
+  storyAuditTrail: { method: 'GET', path: '/api/audit', mode: 'LIVE', consumer: 'loadStories' },
+  storyReset: { method: 'POST', path: '/api/reset', mode: 'LIVE', consumer: 'loadStories' },
+  decisionQueue: { method: 'GET', path: '/api/decisions', mode: 'LIVE', consumer: 'loadDecisions' },
+  decisionBrief: { method: 'GET', path: '/api/decisions/{id}', mode: 'LIVE', consumer: 'renderDecisionBrief' },
+  decisionAction: { method: 'POST', path: '/api/decisions/{id}/actions', mode: 'LIVE', consumer: 'renderDecisionBrief' },
+  learningRecordGet: { method: 'GET', path: '/api/learning/{id}', mode: 'LIVE', consumer: 'renderDecisionBrief' },
+  learningRecordSave: { method: 'PUT', path: '/api/learning/{id}', mode: 'LIVE', consumer: 'renderDecisionBrief' },
+  learningDashboard: { method: 'GET', path: '/api/learning-intelligence', mode: 'LIVE', consumer: 'loadLearningRecords' },
+  audienceIntelligence: { method: 'GET', path: '/api/audience-intelligence', mode: 'LIVE', consumer: 'loadAudienceIntelligence' },
+  advisorySessions: { method: 'GET', path: '/api/advisory-board', mode: 'LIVE', consumer: 'loadAdvisoryBoard' },
+  advisorySessionDetail: { method: 'GET', path: '/api/advisory-board/{id}', mode: 'LIVE', consumer: 'renderAdvisorySession' },
+  campaignPlans: { method: 'GET', path: '/api/campaign-plans', mode: 'LIVE', consumer: 'loadCampaignPlanner' }
+});
+
+if (typeof window !== 'undefined') {
+  window.KNIP_ENDPOINT_CAPABILITY_MAP = ENDPOINT_CAPABILITY_MAP;
+  window.KNIP_ROUTE_STATUS = ROUTE_STATUS;
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { 'content-type': 'application/json', ...(options.headers || {}) },
@@ -313,7 +353,8 @@ function renderAudienceDetail(audience){$('#audienceDetail').innerHTML=`<div cla
 
 function comingSoonTemplate(route) {
   const config = routeConfig[route];
-  return `<section class="page comingSoon"><div class="comingSoonIcon">◇</div><p class="eyebrow dark">SPRINT 3 FOUNDATION</p><h3>${esc(config.title)}</h3><p>The navigation route and executive workspace shell are now active. Functional implementation for this module follows in the next scheduled iteration.</p><button class="primaryAction" type="button" data-go="executive">Return to Executive Decision Center</button></section>`;
+  const status = ROUTE_STATUS[route] || 'PREVIEW';
+  return `<section class="page comingSoon"><div class="comingSoonIcon">◇</div><p class="eyebrow dark">SPRINT 3 FOUNDATION · ${esc(status)}</p><h3>${esc(config.title)}</h3><p>The navigation route and executive workspace shell are now active. Functional implementation for this module follows in the next scheduled iteration.</p><button class="primaryAction" type="button" data-go="executive">Return to Executive Decision Center</button></section>`;
 }
 
 function storyRepositoryTemplate() {

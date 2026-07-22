@@ -5,6 +5,14 @@
  */
 (function () {
   const baseUrl = window.KNIP_API_BASE || '/api';
+  const capabilityMap = Object.freeze({
+    dashboard: { method: 'GET', path: '/dashboard', mode: 'LIVE|FALLBACK', consumer: 'legacy executive home hydration' },
+    stories: { method: 'GET', path: '/stories', mode: 'LIVE', consumer: 'legacy story repository integration' },
+    connectors: { method: 'GET', path: '/connectors', mode: 'LIVE|DEGRADED', consumer: 'platform architecture diagnostics' },
+    researchAgents: { method: 'GET', path: '/research-agents', mode: 'LIVE', consumer: 'research agent registry' },
+    researchAgentRun: { method: 'POST', path: '/research-agents/{agentId}/run', mode: 'LIVE', consumer: 'research agent execution' },
+    stateDemographics: { method: 'GET', path: '/demographics/states', mode: 'LIVE', consumer: 'audience demographic overlays' }
+  });
 
   const fallbackDashboard = {
     generatedAt: '2026-07-22T07:00:00+03:00',
@@ -53,6 +61,7 @@
     getResearchAgents() { return request('/research-agents'); },
     runResearchAgent(agentId, limit = 20) { return request(`/research-agents/${encodeURIComponent(agentId)}/run?limit=${limit}`, { method: 'POST' }); },
     getStateDemographics(year = 2024) { return request(`/demographics/states?year=${year}`); },
+    capabilityMap,
     request,
     baseUrl
   };

@@ -6,6 +6,13 @@
 - Risks, strengths, dependencies and explainability
 - Campaign channels, messengers, assets, CTA and KPIs
 
+# Release 0.9.1-alpha — Baseline Inventory and Restoration Guardrails
+
+- Added a documented baseline inventory of both runtime modes.
+- Added a runtime-mode matrix for Node/public and Docker/FastAPI/root execution paths.
+- Added a regression checklist covering navigation, routes, endpoint smoke, and dual-runtime verification.
+- Clarified restoration safety constraints: additive changes only, no feature or route removal.
+
 # Release Notes
 
 ## 0.4.0-alpha — Sprint 4.1 Narrative DNA Analyzer
