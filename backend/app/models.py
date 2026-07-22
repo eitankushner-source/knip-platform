@@ -45,6 +45,10 @@ class NormalizedStory(BaseModel):
     relevanceScore: float = Field(ge=0, le=100)
     authenticityScore: float = Field(ge=0, le=100)
     evidenceQuality: float = Field(ge=0, le=100)
+    strategicRelevanceLabel: str = 'low relevance'
+    strategicRelevanceScore: float = Field(ge=0, le=100)
+    sourceReliability: float = Field(ge=0, le=100)
+    eligibleForExecutiveUse: bool = False
     status: str = 'REVIEW'
 
 

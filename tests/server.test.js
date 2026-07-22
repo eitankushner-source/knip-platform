@@ -41,13 +41,85 @@ test('story scoring weights evidence, audience, freshness, authenticity, and str
   assert.ok(story.authenticityScore >= 80);
 });
 
+test('sanitizes story text and removes embedded markup', () => {
+  const story = normalizeStoryItem({
+    id:'sanitize_001',
+    title:'<h1>Israeli&nbsp;startup helps families</h1>',
+    summary:'<p>Helping communities &#38; families <script>bad</script></p>',
+    published_at:'2026-07-21T08:00:00Z',
+    url:'https://example.com/sanitize',
+    geography:['Israel'],
+    audiences:['community'],
+    narratives:['innovation'],
+    confidence:0.86,
+    source:{connector:'gdelt-doc',source_name:'Reuters',source_url:'https://example.com/sanitize',collected_at:'2026-07-21T09:00:00Z',reliability:0.9,freshness:'live',license_note:'x'}
+  }, 'gdelt-doc', 'GDELT DOC 2.0');
+  assert.equal(story.title, 'Israeli startup helps families');
+  assert.equal(story.summary, 'Helping communities & families');
+});
+
+test('deduplication prefers the stronger duplicate version', () => {
+  const stories = [
+    normalizeStoryItem({id:'dup_weak', title:'Israeli water tech helps communities', summary:'A practical innovation...', published_at:'2026-07-20T12:00:00Z', url:'https://example.com/dup', geography:['Israel'], audiences:['farmers'], narratives:['resilience'], confidence:0.72, source:{connector:'gdelt-doc',source_name:'The Times',source_url:'https://example.com/dup',collected_at:'2026-07-21T10:00:00Z',reliability:0.74,freshness:'live',license_note:'x'}}, 'gdelt-doc', 'GDELT DOC 2.0'),
+    normalizeStoryItem({id:'dup_strong', title:'Israeli water technology helps communities', summary:'A stronger practical innovation...', published_at:'2026-07-20T12:00:00Z', url:'https://example.com/dup', geography:['Israel'], audiences:['farmers','community'], narratives:['resilience','innovation'], confidence:0.88, source:{connector:'rss',source_name:'The Times',source_url:'https://example.com/dup',collected_at:'2026-07-21T10:00:00Z',reliability:0.9,freshness:'live',license_note:'x'}}, 'rss', 'Curated RSS')
+  ];
+  const deduped = deduplicateStories(stories);
+  assert.equal(deduped.length, 1);
+  assert.equal(deduped[0].id, 'dup_strong');
+});
+
+test('relevance filtering excludes malformed or weak stories', () => {
+  const payload = buildDashboardPayload([
+    {id:'bad', title:'   ', summary:'', sourceUrl:null, evidenceQuality:20, freshness:20, authenticityScore:20, relevanceScore:20, reliability:0.2, confidence:0.2, audienceTags:[], narrativeTags:[], connector:'rss', collectedAt:'2026-07-22T00:00:00Z', publishedAt:'2026-07-22T00:00:00Z', status:'REVIEW'},
+    {id:'good', title:'Israeli innovation supports healthcare in Israel', summary:'A practical story of better care and measurable impact for patients and communities.', sourceUrl:'https://example.com/good', evidenceQuality:82, freshness:91, authenticityScore:86, relevanceScore:84, reliability:0.92, confidence:0.9, audienceTags:['Healthcare Professionals'], narrativeTags:['innovation','humanitarian'], connector:'gdelt-doc', collectedAt:'2026-07-22T00:00:00Z', publishedAt:'2026-07-22T00:00:00Z', status:'VALIDATED'}
+  ], true);
+  assert.equal(payload.priorityDecision.title, 'Israeli innovation supports healthcare in Israel');
+  assert.equal(payload.metrics.storiesValidated.value, 1);
+});
+
+test('audience tagging adds supported audiences where evidence fits', () => {
+  const story = normalizeStoryItem({
+    id:'aud_001',
+    title:'Young Hispanic evangelical leaders see Israeli innovation as a model for community service',
+    summary:'Healthcare professionals and sustainability leaders are discussing the impact of Israeli technology on public health.',
+    published_at:'2026-07-21T08:00:00Z',
+    url:'https://example.com/aud',
+    geography:['Israel'],
+    audiences:['community'],
+    narratives:['innovation','humanitarian'],
+    confidence:0.88,
+    source:{connector:'gdelt-doc',source_name:'Reuters',source_url:'https://example.com/aud',collected_at:'2026-07-21T09:00:00Z',reliability:0.9,freshness:'live',license_note:'x'}
+  }, 'gdelt-doc', 'GDELT DOC 2.0');
+  assert.ok(story.audienceTags.includes('Young Hispanic Evangelicals'));
+  assert.ok(story.audienceTags.includes('Healthcare Professionals'));
+  assert.ok(story.audienceTags.includes('Sustainability Leaders'));
+});
+
+test('dashboard priority eligibility requires strong, recent, and relevant stories', () => {
+  const payload = buildDashboardPayload([
+    {id:'weak', title:'Political controversy dominates the news', summary:'A political story with no clear strategic value.', sourceUrl:'https://example.com/weak', evidenceQuality:55, freshness:50, authenticityScore:54, relevanceScore:52, reliability:0.6, confidence:0.6, audienceTags:['community'], narrativeTags:['politics'], connector:'rss', collectedAt:'2026-07-22T00:00:00Z', publishedAt:'2026-07-22T00:00:00Z', status:'REVIEW'},
+    {id:'eligible', title:'Israeli technology strengthens healthcare access', summary:'A relevant and credible story about humanitarian impact and innovation.', sourceUrl:'https://example.com/eligible', evidenceQuality:82, freshness:91, authenticityScore:88, relevanceScore:84, reliability:0.92, confidence:0.9, audienceTags:['Healthcare Professionals'], narrativeTags:['innovation','humanitarian'], connector:'gdelt-doc', collectedAt:'2026-07-22T00:00:00Z', publishedAt:'2026-07-22T00:00:00Z', status:'VALIDATED'}
+  ], true);
+  assert.equal(payload.priorityDecision.title, 'Israeli technology strengthens healthcare access');
+  assert.equal(payload.sourceMode, 'LIVE');
+});
+
+test('dashboard falls back when no eligible stories are available', () => {
+  const payload = buildDashboardPayload([
+    {id:'bad', title:'Homepage', summary:'Just a navigation page', sourceUrl:'https://example.com', evidenceQuality:40, freshness:40, authenticityScore:40, relevanceScore:35, reliability:0.4, confidence:0.4, audienceTags:[], narrativeTags:[], connector:'rss', collectedAt:'2026-07-22T00:00:00Z', publishedAt:'2026-07-22T00:00:00Z', status:'REVIEW'}
+  ], true);
+  assert.equal(payload.fallback, true);
+  assert.equal(payload.sourceMode, 'FALLBACK');
+  assert.equal(payload.priorityDecision.title, 'Amplify Story: Kenyan Farmers Using Israeli Water Innovation');
+});
+
 test('dashboard priority selection uses the highest-ranked live story', () => {
   const payload = buildDashboardPayload([
-    {id:'low', title:'Lower priority story', summary:'Needs work', audienceTags:['community'], narrativeTags:['innovation'], evidenceQuality:60, freshness:55, authenticityScore:58, relevanceScore:62, reliability:0.7, confidence:0.72, selected: false, connector:'rss', sourceUrl:'https://example.com/low', collectedAt:'2026-07-22T00:00:00Z', status:'REVIEW'},
-    {id:'high', title:'High priority story', summary:'A compelling live recommendation', audienceTags:['community','farmers'], narrativeTags:['resilience','innovation'], evidenceQuality:86, freshness:92, authenticityScore:88, relevanceScore:90, reliability:0.91, confidence:0.95, selected: true, connector:'gdelt-doc', sourceUrl:'https://example.com/high', collectedAt:'2026-07-22T00:00:00Z', status:'VALIDATED'}
+    {id:'low', title:'Israeli story with moderate value', summary:'A useful but less compelling story about shared innovation and community impact.', audienceTags:['community'], narrativeTags:['innovation'], evidenceQuality:62, freshness:70, authenticityScore:70, relevanceScore:64, reliability:0.7, confidence:0.72, selected: false, connector:'rss', sourceUrl:'https://example.com/low', collectedAt:'2026-07-22T00:00:00Z', status:'REVIEW'},
+    {id:'high', title:'Israeli technology strengthens healthcare access', summary:'A compelling live recommendation about humanitarian innovation and patient impact.', audienceTags:['Healthcare Professionals','community'], narrativeTags:['innovation','humanitarian'], evidenceQuality:84, freshness:92, authenticityScore:88, relevanceScore:88, reliability:0.93, confidence:0.95, selected: true, connector:'gdelt-doc', sourceUrl:'https://example.com/high', collectedAt:'2026-07-22T00:00:00Z', status:'VALIDATED'}
   ], true);
-  assert.equal(payload.priorityDecision.title, 'High priority story');
-  assert.equal(payload.source, 'LIVE');
+  assert.equal(payload.priorityDecision.title, 'Israeli technology strengthens healthcare access');
+  assert.equal(payload.sourceMode, 'LIVE');
   assert.equal(payload.metrics.storiesValidated.value, 2);
 });
 

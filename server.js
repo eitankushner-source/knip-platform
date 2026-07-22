@@ -190,24 +190,169 @@ function analyzeStory(story, evidence, audiences) {
   return analysis;
 }
 
+function decodeHtmlEntities(value) {
+  let text = String(value || '');
+  const entityMap = {
+    '&nbsp;': ' ',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'"
+  };
+  for (const [entity, replacement] of Object.entries(entityMap)) {
+    text = text.split(entity).join(replacement);
+  }
+  text = text.replace(/&#(\d+);/g, (_match, code) => String.fromCharCode(Number(code)));
+  text = text.replace(/&#x([0-9a-f]+);/gi, (_match, code) => String.fromCharCode(parseInt(code, 16)));
+  return text;
+}
+function sanitizeText(value) {
+  if (value === null || value === undefined) return '';
+  let text = String(value);
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<\/(p|div|li|ul|ol|section|article|h[1-6]|blockquote|tr|td|th)>/gi, '\n');
+  text = text.replace(/<(script|style|svg|img|iframe|object|embed|noscript|canvas|link|meta|input|button)[^>]*>[\s\S]*?<\/\1>/gi, ' ');
+  text = text.replace(/<(script|style|svg|img|iframe|object|embed|noscript|canvas|link|meta|input|button)[^>]*>/gi, ' ');
+  text = text.replace(/<[^>]+>/g, ' ');
+  text = decodeHtmlEntities(text);
+  text = text.replace(/\s+/g, ' ').trim();
+  return text;
+}
+function normalizeUrl(value) {
+  const raw = sanitizeText(value).replace(/\s+/g, '');
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    parsed.hash = '';
+    parsed.search = '';
+    return parsed.toString().replace(/\/$/, '');
+  }
+  catch {
+    return raw.replace(/[?#].*$/, '').replace(/\/$/, '');
+  }
+}
+function normalizeTitle(value) {
+  return sanitizeText(value).replace(/\s+/g, ' ').trim();
+}
+function normalizeTitleKey(value) {
+  return normalizeTitle(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function titleSimilarity(a, b) {
+  const left = normalizeTitleKey(a);
+  const right = normalizeTitleKey(b);
+  if (!left || !right) return 0;
+  const leftTokens = left.split(/\s+/).filter(Boolean);
+  const rightTokens = right.split(/\s+/).filter(Boolean);
+  if (!leftTokens.length || !rightTokens.length) return 0;
+  const overlap = leftTokens.filter(token => rightTokens.includes(token)).length;
+  return overlap / Math.max(leftTokens.length, rightTokens.length);
+}
+function classifyStrategicRelevance(text, audienceTags = [], narrativeTags = []) {
+  const combined = `${text} ${audienceTags.join(' ')} ${narrativeTags.join(' ')}`.toLowerCase();
+  if (/(scandal|accus|lawsuit|investigation|fraud|misconduct|corruption|controversy)/i.test(combined)) {
+    return { label: 'reputational risk', score: 30 };
+  }
+  if (/(political|partisan|election|campaign|congress|senate|boycott|protest|war|conflict|division)/i.test(combined)) {
+    return { label: 'political controversy', score: 25 };
+  }
+  if (/(audience|framing|risk|sensitive)/i.test(combined)) {
+    return { label: 'audience risk', score: 35 };
+  }
+  if (/(humanitarian|relief|aid|healthcare|medical|hospital|patient|food|water|shelter|education|support)/i.test(combined)) {
+    return { label: 'humanitarian activity', score: 83 };
+  }
+  if (/(innovation|technology|tech|startup|ai|artificial intelligence|research|digital|platform)/i.test(combined)) {
+    return { label: 'innovation and technology', score: 81 };
+  }
+  if (/(family|community|students|children|farmers|people|lives|benefit|help|care|impact)/i.test(combined)) {
+    return { label: 'positive human impact', score: 79 };
+  }
+  if (/(democracy|democratic|rights|freedom|coexistence|shared values|allies|partnership)/i.test(combined)) {
+    return { label: 'shared democratic values', score: 74 };
+  }
+  if (/(culture|society|faith|youth|student|identity|community|arts)/i.test(combined)) {
+    return { label: 'culture and society', score: 72 };
+  }
+  if (/(u\.s|united states|american|washington|alliance|relationship)/i.test(combined)) {
+    return { label: 'U.S.–Israel relationship', score: 70 };
+  }
+  return { label: 'low relevance', score: 20 };
+}
+function inferAudienceTags(story) {
+  const text = `${story.title} ${story.summary} ${story.fullNarrative || ''}`.toLowerCase();
+  const existing = Array.isArray(story.audienceTags) ? story.audienceTags.filter(Boolean) : [];
+  const inferred = [];
+  if (/(moderate|democrat|democratic|shared values|coexistence|rights|freedom)/i.test(text)) inferred.push('Moderate Democrats');
+  if (/(young|hispanic|evangelical|faith|church|community service)/i.test(text)) inferred.push('Young Hispanic Evangelicals');
+  if (/(gen z|student|students|campus|college|jewish)/i.test(text)) inferred.push('Gen Z Jewish Students');
+  if (/(health|healthcare|medical|hospital|patient)/i.test(text)) inferred.push('Healthcare Professionals');
+  if (/(sustainability|climate|water|environment|resilience|energy)/i.test(text)) inferred.push('Sustainability Leaders');
+  if (/(african-american|black|faith|church|community|civil rights|pastor)/i.test(text)) inferred.push('African-American Faith Leaders');
+  return [...new Set([...existing, ...inferred])];
+}
+function isNavigationPage(story) {
+  const title = normalizeTitle(story.title || '').toLowerCase();
+  const summary = normalizeTitle(story.summary || '').toLowerCase();
+  const url = String(story.sourceUrl || story.url || story.source_url || '').toLowerCase();
+  const navTerms = ['homepage', 'home page', 'index', 'search', 'tag', 'category', 'archive', 'media index', 'latest stories', 'newsroom', 'all stories', 'navigation page'];
+  if (navTerms.some(term => title.includes(term) || summary.includes(term))) return true;
+  const cleanUrl = url.replace(/^https?:\/\//, '').replace(/^[^/]+/, '');
+  return /(^|\/)(home|index|search|tag|category|archive|latest|newsroom)(\/|$)/i.test(cleanUrl);
+}
+function isContentRelevant(story) {
+  const text = `${story.title || ''} ${story.summary || ''} ${story.fullNarrative || ''}`.toLowerCase();
+  const geography = Array.isArray(story.geography) ? story.geography.join(' ').toLowerCase() : '';
+  return /(israel|israeli|jewish|jerusalem|haifa|tel aviv|zion|middle east|u\.s|united states|american|democracy|coexistence|humanitarian|innovation|technology|healthcare|water|sustainability|community|society)/i.test(`${text} ${geography}`);
+}
+function isStoryRecentEnough(story, now = new Date()) {
+  const publishedAt = story.publishedAt ? new Date(story.publishedAt) : (story.collectedAt ? new Date(story.collectedAt) : null);
+  if (!publishedAt || Number.isNaN(publishedAt.getTime())) return true;
+  const ageDays = (now.getTime() - publishedAt.getTime()) / 86400000;
+  return ageDays <= 30;
+}
+function isExecutiveEligible(story) {
+  const title = normalizeTitle(story.title || '');
+  const summary = normalizeTitle(story.summary || '');
+  const sourceUrl = normalizeUrl(story.sourceUrl || story.url || story.source_url || null);
+  const strategic = story.strategicRelevance || { label: 'low relevance' };
+  return Boolean(sourceUrl)
+    && Number(story.evidenceQuality || 0) >= 60
+    && Number(story.relevanceScore || 0) >= 60
+    && !['low relevance', 'audience risk', 'reputational risk', 'political controversy'].includes(strategic.label)
+    && title.length >= 8
+    && summary.length >= 20
+    && !isNavigationPage(story)
+    && isContentRelevant(story)
+    && isStoryRecentEnough(story);
+}
 function normalizeStoryItem(story, connector='local', connectorLabel='Local story repository') {
-  const title = String(story.title || story.name || 'Untitled story').trim();
-  const summary = String(story.summary || story.description || 'Story summary unavailable.').trim();
+  const title = normalizeTitle(story.title || story.name || 'Untitled story');
+  const summary = normalizeTitle(story.summary || story.description || 'Story summary unavailable.');
   const publishedAt = story.publishedAt || story.published_at || story.createdAt || null;
-  const sourceUrl = story.sourceUrl || story.url || story.source_url || null;
-  const sourceName = story.sourceName || story.source?.source_name || story.source?.sourceName || story.source || story.source_name || connectorLabel;
+  const sourceUrl = normalizeUrl(story.sourceUrl || story.url || story.source_url || story.source?.source_url || story.source?.sourceUrl || null);
+  const sourceName = sanitizeText(story.sourceName || story.source?.source_name || story.source?.sourceName || story.source || story.source_name || connectorLabel);
   const collectedAt = story.collectedAt || story.collected_at || new Date().toISOString();
-  const geography = Array.isArray(story.geography) ? story.geography.filter(Boolean) : (story.geography ? [story.geography] : []);
-  const audienceTags = Array.isArray(story.audienceTags) ? story.audienceTags.filter(Boolean) : (Array.isArray(story.audiences) ? story.audiences.filter(Boolean) : []);
-  const narrativeTags = Array.isArray(story.narrativeTags) ? story.narrativeTags.filter(Boolean) : (Array.isArray(story.narratives) ? story.narratives.filter(Boolean) : []);
+  const geography = Array.isArray(story.geography) ? story.geography.filter(Boolean).map(item => sanitizeText(item)) : (story.geography ? [sanitizeText(story.geography)] : []);
+  const audienceTags = inferAudienceTags({
+    ...story,
+    title,
+    summary,
+    audienceTags: Array.isArray(story.audienceTags) ? story.audienceTags.filter(Boolean).map(item => sanitizeText(item)) : (Array.isArray(story.audiences) ? story.audiences.filter(Boolean).map(item => sanitizeText(item)) : [])
+  });
+  const narrativeTags = Array.isArray(story.narrativeTags) ? story.narrativeTags.filter(Boolean).map(item => sanitizeText(item)) : (Array.isArray(story.narratives) ? story.narratives.filter(Boolean).map(item => sanitizeText(item)) : []);
   const reliability = Number(story.reliability ?? story.source?.reliability ?? 0.72);
   const confidence = Number(story.confidence ?? 0.76);
   const evidenceQuality = Number(story.evidenceQuality ?? Math.min(100, Math.max(0, Math.round((reliability * 100) * 0.7 + confidence * 100 * 0.3))));
   const freshness = Number(story.freshness ?? 90);
   const authenticityScore = Number(story.authenticityScore ?? Math.min(100, Math.max(0, Math.round((confidence * 100 * 0.55) + (evidenceQuality * 0.45)))));
-  const audienceRelevance = Math.min(100, Math.max(0, Math.round((audienceTags.length * 20 * 0.6) + (evidenceQuality * 0.4))));
-  const strategicRelevance = Math.min(100, Math.max(0, Math.round((narrativeTags.length * 18 * 0.55) + ((evidenceQuality + 10) * 0.45))));
-  const relevanceScore = Math.round((evidenceQuality * 0.3) + (audienceRelevance * 0.25) + (freshness * 0.2) + (authenticityScore * 0.15) + (strategicRelevance * 0.1));
+  const strategicRelevance = classifyStrategicRelevance(`${title} ${summary}`, audienceTags, narrativeTags);
+  const audienceRelevance = Math.min(100, Math.max(0, Math.round((audienceTags.length * 12) + (evidenceQuality * 0.35))));
+  const strategicScore = Math.min(100, Math.max(0, Math.round(strategicRelevance.score + (narrativeTags.length * 3))));
+  const sourceReliability = Math.min(100, Math.max(0, Math.round(reliability * 100)));
+  const freshnessScore = Math.min(100, Math.max(0, Number.isFinite(freshness) ? Number(freshness) : 90));
+  const relevanceScore = Math.round((evidenceQuality * 0.25) + (audienceRelevance * 0.25) + (strategicScore * 0.2) + (freshnessScore * 0.15) + (authenticityScore * 0.1) + (sourceReliability * 0.05));
   return {
     id: String(story.id || `${connector}:${title}`),
     title,
@@ -222,29 +367,34 @@ function normalizeStoryItem(story, connector='local', connectorLabel='Local stor
     narrativeTags,
     reliability: Math.min(1, Math.max(0, reliability)),
     confidence: Math.min(1, Math.max(0, confidence)),
-    freshness,
+    freshness: freshnessScore,
     relevanceScore,
     authenticityScore,
     evidenceQuality,
+    strategicRelevanceLabel: strategicRelevance.label,
+    strategicRelevanceScore: strategicScore,
+    sourceReliability,
+    eligibleForExecutiveUse: isExecutiveEligible({ ...story, title, summary, sourceUrl, evidenceQuality, relevanceScore, strategicRelevance: strategicRelevance, audienceTags, narrativeTags, publishedAt, collectedAt }),
     status: relevanceScore >= 78 ? 'VALIDATED' : 'REVIEW'
   };
 }
 function deduplicateStories(stories) {
   const deduped = [];
   for (const story of [...stories].sort((a, b) => b.relevanceScore - a.relevanceScore)) {
-    const titleKey = String(story.title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const titleKey = normalizeTitleKey(story.title || '');
     const sourceKey = story.sourceName ? String(story.sourceName).toLowerCase() : '';
     const dateKey = story.publishedAt ? story.publishedAt.slice(0, 10) : '';
-    const urlKey = story.sourceUrl ? story.sourceUrl.toLowerCase() : '';
+    const urlKey = story.sourceUrl ? normalizeUrl(story.sourceUrl) : '';
     const isDuplicate = deduped.some(existing => {
-      const existingTitle = String(existing.title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-      const titleTokens = new Set(titleKey.split(/\s+/).filter(Boolean));
-      const existingTokens = new Set(existingTitle.split(/\s+/).filter(Boolean));
-      const overlap = titleTokens.size && existingTokens.size ? [...titleTokens].filter(token => existingTokens.has(token)).length / Math.max(titleTokens.size, existingTokens.size) : 0;
-      const titleSimilarity = titleKey && existingTitle ? (titleKey.includes(existingTitle) || existingTitle.includes(titleKey) || overlap >= 0.55) : false;
-      const sameUrl = urlKey && existing.sourceUrl ? urlKey === existing.sourceUrl.toLowerCase() : false;
-      const sameSourceDate = sourceKey && existing.sourceName ? (sourceKey === String(existing.sourceName).toLowerCase() && ((dateKey && existing.publishedAt && dateKey === existing.publishedAt.slice(0, 10)) || (!dateKey && !existing.publishedAt))) : false;
-      return sameUrl || titleSimilarity || sameSourceDate;
+      const existingTitle = normalizeTitleKey(existing.title || '');
+      const existingUrl = existing.sourceUrl ? normalizeUrl(existing.sourceUrl) : '';
+      const existingSource = existing.sourceName ? String(existing.sourceName).toLowerCase() : '';
+      const existingDate = existing.publishedAt ? existing.publishedAt.slice(0, 10) : '';
+      const sourceDateMatch = sourceKey && existingSource && sourceKey === existingSource && (dateKey && existingDate ? dateKey === existingDate : (!dateKey && !existingDate));
+      const sameUrl = Boolean(urlKey && existingUrl && urlKey === existingUrl);
+      const normalizedTitleMatch = Boolean(titleKey && existingTitle && (titleKey === existingTitle || titleKey.includes(existingTitle) || existingTitle.includes(titleKey)));
+      const highTitleSimilarity = titleSimilarity(story.title, existing.title) >= 0.6;
+      return sameUrl || normalizedTitleMatch || highTitleSimilarity || sourceDateMatch;
     });
     if (isDuplicate) continue;
     deduped.push(story);
@@ -254,13 +404,38 @@ function deduplicateStories(stories) {
 function scoreStory(story) {
   return normalizeStoryItem({ ...story, evidenceQuality: story.evidenceQuality, freshness: story.freshness, authenticityScore: story.authenticityScore, audienceTags: story.audienceTags, narrativeTags: story.narrativeTags, reliability: story.reliability, confidence: story.confidence }, story.connector || 'local', story.connector || 'Local story repository');
 }
+function filterEligibleStories(stories = []) {
+  return (stories || [])
+    .map(story => scoreStory(story))
+    .filter(story => {
+      const title = normalizeTitle(story.title || '');
+      const summary = normalizeTitle(story.summary || '');
+      const sourceUrl = normalizeUrl(story.sourceUrl || story.url || story.source_url || null);
+      const strategic = story.strategicRelevanceLabel || 'low relevance';
+      return Boolean(sourceUrl)
+        && Number(story.evidenceQuality || 0) >= 60
+        && Number(story.relevanceScore || 0) >= 60
+        && !['low relevance', 'audience risk', 'reputational risk', 'political controversy'].includes(strategic)
+        && title.length >= 8
+        && summary.length >= 20
+        && !isNavigationPage(story)
+        && isContentRelevant(story)
+        && isStoryRecentEnough(story);
+    });
+}
+function prepareStoryCandidates(stories = []) {
+  const normalized = (stories || []).map(story => normalizeStoryItem(story, story.connector || 'local', story.connector || 'Local story repository'));
+  const deduped = deduplicateStories(normalized);
+  return filterEligibleStories(deduped);
+}
 function buildDashboardPayload(stories = [], live = false) {
   const inputStories = Array.isArray(stories) ? stories : [];
-  const normalized = deduplicateStories(inputStories.map(story => scoreStory(story)));
+  const normalized = prepareStoryCandidates(inputStories);
   if (!normalized.length) {
     return {
       fallback: true,
       source: 'FALLBACK',
+      sourceMode: 'FALLBACK',
       metrics: { storiesValidated: { value: inputStories.length || 4, trend: 'FALLBACK' } },
       priorityDecision: {
         title: 'Amplify Story: Kenyan Farmers Using Israeli Water Innovation',
@@ -280,9 +455,10 @@ function buildDashboardPayload(stories = [], live = false) {
   }
   const priority = normalized[0];
   return {
-    fallback: !live,
-    source: live ? 'LIVE' : 'FALLBACK',
-    metrics: { storiesValidated: { value: inputStories.length || normalized.length, trend: live ? 'LIVE' : 'FALLBACK' } },
+    fallback: false,
+    source: 'LIVE',
+    sourceMode: 'LIVE',
+    metrics: { storiesValidated: { value: normalized.length, trend: 'LIVE' } },
     priorityDecision: {
       title: priority.title,
       summary: priority.summary,
