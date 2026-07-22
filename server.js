@@ -11,6 +11,25 @@ const DATA_FILE = path.resolve(__dirname, process.env.KNIP_DATA_FILE || './data/
 const SEED_FILE = path.resolve(__dirname, './data/seed.json');
 const VERSION = '0.9.0-alpha-ai-advisory-board';
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
+const AUDIENCE_PROFILES = [
+  { id: 'aud_mod_dems', name: 'Moderate Democrats', signals: ['democracy', 'bipartisan cooperation', 'climate resilience', 'healthcare', 'humanitarian impact', 'pragmatic u.s.–israel cooperation'], values: ['cooperation', 'pragmatism', 'shared values'], geography: ['United States'], channels: ['email', 'digital video'], messengers: ['community leaders'] },
+  { id: 'aud_yh_evang', name: 'Young Hispanic Evangelicals', signals: ['faith', 'family', 'community development', 'entrepreneurship', 'agriculture', 'water and food security'], values: ['family', 'service', 'opportunity'], geography: ['Texas', 'Florida', 'California'], channels: ['podcast', 'social video'], messengers: ['faith leaders'] },
+  { id: 'aud_genz_jews', name: 'Gen Z Jewish Students', signals: ['campus', 'identity', 'pluralism', 'technology', 'democracy', 'social impact', 'authentic peer voices'], values: ['identity', 'belonging', 'impact'], geography: ['New York', 'California', 'Illinois'], channels: ['short-form video', 'campus events'], messengers: ['student leaders'] },
+  { id: 'aud_health', name: 'Healthcare Professionals', signals: ['medicine', 'digital health', 'public health', 'emergency care', 'medical research', 'patient outcomes'], values: ['evidence', 'care', 'innovation'], geography: ['United States'], channels: ['professional networks', 'journals'], messengers: ['clinicians'] },
+  { id: 'aud_sustain', name: 'Sustainability Leaders', signals: ['climate', 'water', 'agriculture', 'renewable energy', 'conservation', 'resilience', 'food security'], values: ['stewardship', 'resilience', 'impact'], geography: ['United States', 'Israel'], channels: ['executive briefings', 'industry forums'], messengers: ['industry experts'] },
+  { id: 'aud_black_faith', name: 'African-American Faith Leaders', signals: ['faith', 'civil rights', 'community resilience', 'healthcare equity', 'humanitarian activity', 'shared historical experience'], values: ['justice', 'community', 'service'], geography: ['United States'], channels: ['faith networks', 'community forums'], messengers: ['pastors'] }
+];
+const STATE_DEMOGRAPHIC_PROFILES = {
+  california: { medianIncome: 95000, hispanicShare: 39.4, urbanity: 0.92 },
+  texas: { medianIncome: 76000, hispanicShare: 40.2, urbanity: 0.87 },
+  florida: { medianIncome: 71000, hispanicShare: 26.1, urbanity: 0.83 },
+  newyork: { medianIncome: 82000, hispanicShare: 19.0, urbanity: 0.95 },
+  illinois: { medianIncome: 78000, hispanicShare: 17.5, urbanity: 0.88 },
+  pennsylvania: { medianIncome: 73000, hispanicShare: 7.8, urbanity: 0.81 }
+};
+const STATE_ALIASES = new Map([
+  ['ca', 'california'], ['california', 'california'], ['tx', 'texas'], ['texas', 'texas'], ['fl', 'florida'], ['florida', 'florida'], ['ny', 'newyork'], ['new york', 'newyork'], ['newyork', 'newyork'], ['il', 'illinois'], ['illinois', 'illinois'], ['pa', 'pennsylvania'], ['pennsylvania', 'pennsylvania']
+]);
 
 async function ensureDatabase() {
   await mkdir(path.dirname(DATA_FILE), { recursive: true });
@@ -327,6 +346,67 @@ function isExecutiveEligible(story) {
     && isContentRelevant(story)
     && isStoryRecentEnough(story);
 }
+function normalizeGeography(value) {
+  const rawValues = Array.isArray(value) ? value : (value ? [value] : []);
+  const normalized = [];
+  for (const item of rawValues) {
+    const text = sanitizeText(item);
+    if (!text) continue;
+    const lowered = text.toLowerCase();
+    const alias = STATE_ALIASES.get(lowered) || STATE_ALIASES.get(lowered.replace(/\s+/g, ''));
+    const label = alias ? alias.replace(/\b\w/g, ch => ch.toUpperCase()) : text;
+    normalized.push(label);
+  }
+  return [...new Set(normalized)];
+}
+function getDemographicSignals(story) {
+  const geography = normalizeGeography(story.geography || []);
+  const profiles = [];
+  for (const item of geography) {
+    const key = item.toLowerCase();
+    if (STATE_DEMOGRAPHIC_PROFILES[key]) {
+      profiles.push({ state: item, ...STATE_DEMOGRAPHIC_PROFILES[key] });
+    }
+  }
+  return profiles;
+}
+function getAudienceProfiles() {
+  return AUDIENCE_PROFILES.map(profile => ({ ...profile }));
+}
+function buildAudienceMatches(story) {
+  const text = `${story.title || ''} ${story.summary || ''} ${story.narrativeTags?.join(' ') || ''}`.toLowerCase();
+  const demographicSignals = getDemographicSignals(story);
+  const dataMode = demographicSignals.length ? 'PARTIAL' : 'RULE_BASED';
+  const matches = getAudienceProfiles().map(profile => {
+    const matchedSignals = profile.signals.filter(signal => text.includes(signal.toLowerCase()));
+    const sharedValueAlignment = profile.values.filter(value => text.includes(value.toLowerCase())).length;
+    const narrativeRelevance = clamp(30 + matchedSignals.length * 12 + (profile.signals.some(signal => text.includes(signal.toLowerCase())) ? 15 : 0));
+    const geographicRelevance = demographicSignals.length ? clamp(20 + demographicSignals.length * 10 + (profile.geography.some(geo => story.geography?.some(item => sanitizeText(item).toLowerCase().includes(geo.toLowerCase()))) ? 15 : 0)) : 20;
+    const demographicRelevance = demographicSignals.length ? clamp(35 + demographicSignals.reduce((sum, signal) => sum + (signal.hispanicShare && (profile.id === 'aud_yh_evang' ? signal.hispanicShare / 10 : 0) + (signal.medianIncome && (profile.id === 'aud_health' ? signal.medianIncome / 2000 : 0))), 0)) : 25;
+    const evidenceQuality = Number(story.evidenceQuality || 60);
+    const score = Math.round((narrativeRelevance * 0.35) + (demographicRelevance * 0.25) + (geographicRelevance * 0.15) + (sharedValueAlignment * 15 * 0.15) + (evidenceQuality * 0.1));
+    const confidence = clamp(score >= 75 ? 88 : score >= 60 ? 78 : 66);
+    return {
+      audienceId: profile.id,
+      audienceName: profile.name,
+      matchScore: clamp(score),
+      confidence,
+      reasons: [
+        ...(matchedSignals.length ? [`Matched ${matchedSignals.slice(0, 3).join(', ')}.`] : []),
+        ...(sharedValueAlignment ? ['Aligned with shared values and audience framing.'] : []),
+        ...(demographicSignals.length ? ['Demographic context supports relevance.'] : [])
+      ],
+      supportingSignals: matchedSignals.slice(0, 5),
+      geographicRelevance: clamp(geographicRelevance),
+      demographicRelevance: clamp(demographicRelevance),
+      narrativeRelevance: clamp(narrativeRelevance),
+      dataMode: demographicSignals.length ? 'PARTIAL' : 'RULE_BASED',
+      evidenceSources: [...(demographicSignals.length ? ['demographic_context'] : []), 'story_text', 'knip_profile'],
+      lastUpdated: new Date().toISOString()
+    };
+  }).sort((a, b) => b.matchScore - a.matchScore);
+  return matches;
+}
 function normalizeStoryItem(story, connector='local', connectorLabel='Local story repository') {
   const title = normalizeTitle(story.title || story.name || 'Untitled story');
   const summary = normalizeTitle(story.summary || story.description || 'Story summary unavailable.');
@@ -353,6 +433,8 @@ function normalizeStoryItem(story, connector='local', connectorLabel='Local stor
   const sourceReliability = Math.min(100, Math.max(0, Math.round(reliability * 100)));
   const freshnessScore = Math.min(100, Math.max(0, Number.isFinite(freshness) ? Number(freshness) : 90));
   const relevanceScore = Math.round((evidenceQuality * 0.25) + (audienceRelevance * 0.25) + (strategicScore * 0.2) + (freshnessScore * 0.15) + (authenticityScore * 0.1) + (sourceReliability * 0.05));
+  const audienceMatches = buildAudienceMatches({ ...story, title, summary, geography, audienceTags, narrativeTags, evidenceQuality, sourceUrl });
+  const bestAudienceMatch = audienceMatches[0] || null;
   return {
     id: String(story.id || `${connector}:${title}`),
     title,
@@ -375,6 +457,10 @@ function normalizeStoryItem(story, connector='local', connectorLabel='Local stor
     strategicRelevanceScore: strategicScore,
     sourceReliability,
     eligibleForExecutiveUse: isExecutiveEligible({ ...story, title, summary, sourceUrl, evidenceQuality, relevanceScore, strategicRelevance: strategicRelevance, audienceTags, narrativeTags, publishedAt, collectedAt }),
+    audienceMatches,
+    bestAudienceMatch,
+    audienceMatchScore: bestAudienceMatch ? bestAudienceMatch.matchScore : 0,
+    audienceDataMode: bestAudienceMatch ? bestAudienceMatch.dataMode : 'RULE_BASED',
     status: relevanceScore >= 78 ? 'VALIDATED' : 'REVIEW'
   };
 }
@@ -450,6 +536,11 @@ function buildDashboardPayload(stories = [], live = false) {
         delayImpact: 'Opportunity freshness declines as the news cycle advances.',
         sourceUrl: null,
         connector: null,
+        bestAudienceName: 'Moderate Democrats',
+        audienceMatchScore: 82,
+        audienceConfidence: 78,
+        audienceReasons: ['Fallback audience profile.'],
+        audienceDataMode: 'RULE_BASED',
       },
     };
   }
@@ -462,7 +553,7 @@ function buildDashboardPayload(stories = [], live = false) {
     priorityDecision: {
       title: priority.title,
       summary: priority.summary,
-      audienceMatch: Math.min(99, Math.max(70, Math.round(priority.relevanceScore * 0.9))),
+      audienceMatch: Math.round(priority.audienceMatchScore || Math.min(99, Math.max(70, Math.round(priority.relevanceScore * 0.9)))),
       evidenceQuality: Math.round(priority.evidenceQuality),
       strategicImpact: priority.relevanceScore >= 80 ? 'High' : 'Medium',
       strategicImpactScore: Math.round(priority.relevanceScore),
@@ -472,6 +563,11 @@ function buildDashboardPayload(stories = [], live = false) {
       delayImpact: 'Opportunity freshness declines as the news cycle advances.',
       sourceUrl: priority.sourceUrl,
       connector: priority.connector,
+      bestAudienceName: priority.bestAudienceMatch?.audienceName || 'Moderate Democrats',
+      audienceMatchScore: priority.audienceMatchScore || 0,
+      audienceConfidence: priority.bestAudienceMatch?.confidence || 0,
+      audienceReasons: priority.bestAudienceMatch?.reasons || [],
+      audienceDataMode: priority.audienceDataMode || 'RULE_BASED',
     },
   };
 }
@@ -530,12 +626,18 @@ function buildLearningIntelligence(db) {
   return { metrics:{totalDecisions:records.length,completedCampaigns:completed.length,successRate,lessonsCaptured:records.filter(r=>r.lessonsLearned).length,reusablePatterns:reusablePatterns.length}, reusablePatterns, insights, records };
 }
 
-export { normalizeStoryItem, deduplicateStories, scoreStory, buildDashboardPayload };
+export { normalizeStoryItem, deduplicateStories, scoreStory, buildDashboardPayload, getAudienceProfiles, buildAudienceMatches };
 
 export async function handleRequest(req,res) {
   const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
   if(req.method==='GET'&&url.pathname==='/api/health') return sendJson(res,200,{status:'ok',service:'knip-platform',version:VERSION,timestamp:new Date().toISOString()});
-  if(req.method==='GET'&&url.pathname==='/api/audiences'){const db=await readDb();return sendJson(res,200,{audiences:db.audiences||[]});}
+  if(req.method==='GET'&&url.pathname==='/api/audiences'){return sendJson(res,200,{audiences:getAudienceProfiles()});}
+  if(req.method==='GET'&&url.pathname.startsWith('/api/audiences/')){
+    const audienceId=url.pathname.split('/').pop();
+    const audience=getAudienceProfiles().find(item=>item.id===audienceId);
+    if(!audience) return sendJson(res,404,{error:'Audience not found'});
+    return sendJson(res,200,{audience});
+  }
   if(req.method==='GET'&&url.pathname==='/api/dashboard'){
     const db=await readDb();
     const sourceStories = (db.stories||[]).map(story => ({
@@ -586,11 +688,12 @@ export async function handleRequest(req,res) {
       status: 'REVIEW',
     }));
     const normalized = deduplicateStories(sourceStories.map(story => scoreStory(normalizeStoryItem(story, 'local', story.connector || 'Local Story Repository'))));
-    const storiesPayload = normalized.map(item => ({...item, evidenceCount:(db.evidence||[]).filter(e=>e.storyId===item.id).length, latestAnalysis:(db.analyses||[]).find(a=>a.storyId===item.id)||null}));
+    const storiesPayload = normalized.map(item => ({...item, evidenceCount:(db.evidence||[]).filter(e=>e.storyId===item.id).length, latestAnalysis:(db.analyses||[]).find(a=>a.storyId===item.id)||null, audienceMatches:item.audienceMatches, bestAudienceMatch:item.bestAudienceMatch, audienceMatchScore:item.audienceMatchScore, audienceDataMode:item.audienceDataMode}));
     return sendJson(res,200,{stories:storiesPayload,items:storiesPayload,count:storiesPayload.length});
   }
   const storyMatch=url.pathname.match(/^\/api\/stories\/([^/]+)$/);
-  if(req.method==='GET'&&storyMatch){const db=await readDb();const story=db.stories.find(s=>s.id===storyMatch[1]);if(!story)return sendJson(res,404,{error:'Story not found'});return sendJson(res,200,{story,evidence:(db.evidence||[]).filter(e=>e.storyId===story.id),analyses:(db.analyses||[]).filter(a=>a.storyId===story.id)});}
+  if(req.method==='GET'&&storyMatch){const db=await readDb();const story=db.stories.find(s=>s.id===storyMatch[1]);if(!story)return sendJson(res,404,{error:'Story not found'});const normalizedStory=normalizeStoryItem({...story, sourceUrl:story.urls?.[0]||story.sourceUrl||null, sourceName:story.source||'Local story repository', connector:story.sourceType?'Local Story Repository':'Local story repository', audienceTags:story.tags?.length?story.tags:['community'], narrativeTags:story.tags?.length?story.tags:['innovation'], evidenceQuality:82, freshness:88, authenticityScore:84, reliability:0.78, confidence:0.8}, 'local', story.sourceType?'Local Story Repository':'Local story repository');return sendJson(res,200,{story:{...story, audienceMatches:normalizedStory.audienceMatches, bestAudienceMatch:normalizedStory.bestAudienceMatch, audienceMatchScore:normalizedStory.audienceMatchScore, audienceDataMode:normalizedStory.audienceDataMode},evidence:(db.evidence||[]).filter(e=>e.storyId===story.id),analyses:(db.analyses||[]).filter(a=>a.storyId===story.id)});}
+  if(req.method==='GET'&&url.pathname.match(/^\/api\/stories\/([^/]+)\/audiences$/)){const storyId=url.pathname.split('/')[3];const db=await readDb();const story=db.stories.find(s=>s.id===storyId);if(!story)return sendJson(res,404,{error:'Story not found'});const normalizedStory=normalizeStoryItem({...story, sourceUrl:story.urls?.[0]||story.sourceUrl||null, sourceName:story.source||'Local story repository', connector:story.sourceType?'Local Story Repository':'Local story repository', audienceTags:story.tags?.length?story.tags:['community'], narrativeTags:story.tags?.length?story.tags:['innovation'], evidenceQuality:82, freshness:88, authenticityScore:84, reliability:0.78, confidence:0.8}, 'local', story.sourceType?'Local Story Repository':'Local story repository');return sendJson(res,200,{storyId, audienceMatches:normalizedStory.audienceMatches, bestAudienceMatch:normalizedStory.bestAudienceMatch, audienceDataMode:normalizedStory.audienceDataMode});}
   if(req.method==='POST'&&url.pathname==='/api/stories'){
     try{const body=await readBody(req);if(!body.title||typeof body.title!=='string')return sendJson(res,400,{error:'title is required'});const db=await readDb();db.stories??=[];db.evidence??=[];db.analyses??=[];const now=new Date().toISOString();const story={id:`story_${crypto.randomUUID()}`,title:body.title.trim(),summary:String(body.summary||'').trim(),fullNarrative:String(body.fullNarrative||'').trim(),source:String(body.source||'').trim(),sourceType:String(body.sourceType||'').trim(),author:String(body.author||'').trim(),country:String(body.country||'').trim(),location:String(body.location||'').trim(),language:String(body.language||'English').trim(),publishedAt:String(body.publishedAt||'').trim(),urls:Array.isArray(body.urls)?body.urls.filter(Boolean):[],tags:Array.isArray(body.tags)?body.tags.filter(Boolean):[],status:'NEW',createdAt:now,updatedAt:now};db.stories.unshift(story);audit(db,'STORY_CREATED','STORY',story.id);await writeDb(db);return sendJson(res,201,{story});}catch(error){return sendJson(res,400,{error:error.message});}
   }
