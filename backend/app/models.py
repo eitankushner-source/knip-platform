@@ -27,6 +27,21 @@ class IntelligenceItem(BaseModel):
     raw: dict[str, Any] = {}
 
 
+class AudienceMatch(BaseModel):
+    audienceId: str
+    audienceName: str
+    matchScore: float
+    confidence: float
+    reasons: list[str] = []
+    supportingSignals: list[str] = []
+    geographicRelevance: float
+    demographicRelevance: float
+    narrativeRelevance: float
+    dataMode: str = 'RULE_BASED'
+    evidenceSources: list[str] = []
+    lastUpdated: datetime
+
+
 class NormalizedStory(BaseModel):
     id: str
     title: str
@@ -49,6 +64,10 @@ class NormalizedStory(BaseModel):
     strategicRelevanceScore: float = Field(ge=0, le=100)
     sourceReliability: float = Field(ge=0, le=100)
     eligibleForExecutiveUse: bool = False
+    audienceMatches: list[AudienceMatch] = []
+    bestAudienceMatch: AudienceMatch | None = None
+    audienceMatchScore: float = 0.0
+    audienceDataMode: str = 'RULE_BASED'
     status: str = 'REVIEW'
 
 

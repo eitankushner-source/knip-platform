@@ -13,7 +13,7 @@ from app.connectors.census import CensusConnector
 from app.connectors.gdelt import GdeltConnector
 from app.connectors.research_agents import ResearchAgentConnector
 from app.connectors.rss import RssConnector
-from app.models import IntelligenceItem, NormalizedStory, SourceRecord
+from app.models import AudienceMatch, IntelligenceItem, NormalizedStory, SourceRecord
 from app.services.dashboard import DashboardService
 
 settings = get_settings()
@@ -31,6 +31,26 @@ gdelt = GdeltConnector()
 census = CensusConnector()
 rss = RssConnector()
 research_agents = ResearchAgentConnector()
+
+AUDIENCE_PROFILES = [
+    {'id': 'aud_mod_dems', 'name': 'Moderate Democrats', 'signals': ['democracy', 'bipartisan cooperation', 'climate resilience', 'healthcare', 'humanitarian impact', 'pragmatic u.s.–israel cooperation'], 'values': ['cooperation', 'pragmatism', 'shared values'], 'geography': ['United States'], 'channels': ['email', 'digital video'], 'messengers': ['community leaders']},
+    {'id': 'aud_yh_evang', 'name': 'Young Hispanic Evangelicals', 'signals': ['faith', 'family', 'community development', 'entrepreneurship', 'agriculture', 'water and food security'], 'values': ['family', 'service', 'opportunity'], 'geography': ['Texas', 'Florida', 'California'], 'channels': ['podcast', 'social video'], 'messengers': ['faith leaders']},
+    {'id': 'aud_genz_jews', 'name': 'Gen Z Jewish Students', 'signals': ['campus', 'identity', 'pluralism', 'technology', 'democracy', 'social impact', 'authentic peer voices'], 'values': ['identity', 'belonging', 'impact'], 'geography': ['New York', 'California', 'Illinois'], 'channels': ['short-form video', 'campus events'], 'messengers': ['student leaders']},
+    {'id': 'aud_health', 'name': 'Healthcare Professionals', 'signals': ['medicine', 'digital health', 'public health', 'emergency care', 'medical research', 'patient outcomes'], 'values': ['evidence', 'care', 'innovation'], 'geography': ['United States'], 'channels': ['professional networks', 'journals'], 'messengers': ['clinicians']},
+    {'id': 'aud_sustain', 'name': 'Sustainability Leaders', 'signals': ['climate', 'water', 'agriculture', 'renewable energy', 'conservation', 'resilience', 'food security'], 'values': ['stewardship', 'resilience', 'impact'], 'geography': ['United States', 'Israel'], 'channels': ['executive briefings', 'industry forums'], 'messengers': ['industry experts']},
+    {'id': 'aud_black_faith', 'name': 'African-American Faith Leaders', 'signals': ['faith', 'civil rights', 'community resilience', 'healthcare equity', 'humanitarian activity', 'shared historical experience'], 'values': ['justice', 'community', 'service'], 'geography': ['United States'], 'channels': ['faith networks', 'community forums'], 'messengers': ['pastors']},
+]
+STATE_DEMOGRAPHIC_PROFILES = {
+    'california': {'medianIncome': 95000, 'hispanicShare': 39.4, 'urbanity': 0.92},
+    'texas': {'medianIncome': 76000, 'hispanicShare': 40.2, 'urbanity': 0.87},
+    'florida': {'medianIncome': 71000, 'hispanicShare': 26.1, 'urbanity': 0.83},
+    'newyork': {'medianIncome': 82000, 'hispanicShare': 19.0, 'urbanity': 0.95},
+    'illinois': {'medianIncome': 78000, 'hispanicShare': 17.5, 'urbanity': 0.88},
+    'pennsylvania': {'medianIncome': 73000, 'hispanicShare': 7.8, 'urbanity': 0.81},
+}
+STATE_ALIASES = {
+    'ca': 'california', 'california': 'california', 'tx': 'texas', 'texas': 'texas', 'fl': 'florida', 'florida': 'florida', 'ny': 'newyork', 'new york': 'newyork', 'newyork': 'newyork', 'il': 'illinois', 'illinois': 'illinois', 'pa': 'pennsylvania', 'pennsylvania': 'pennsylvania',
+}
 
 
 def coerce_datetime(value: object) -> datetime | None:
@@ -53,7 +73,7 @@ def sanitize_text(value: object) -> str:
     text = re.sub(r'<(script|style|svg|img|iframe|object|embed|noscript|canvas|link|meta|input|button)[^>]*>[\s\S]*?</\1>', ' ', text, flags=re.IGNORECASE)
     text = re.sub(r'<(script|style|svg|img|iframe|object|embed|noscript|canvas|link|meta|input|button)[^>]*>', ' ', text, flags=re.IGNORECASE)
     text = re.sub(r'<[^>]+>', ' ', text)
-    text = html.unescape(text)
+    text = unescape(text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -171,6 +191,63 @@ def is_executive_eligible(story: NormalizedStory) -> bool:
     return bool(source_url) and story.evidenceQuality >= 60 and story.relevanceScore >= 60 and strategic_label not in {'low relevance', 'audience risk', 'reputational risk', 'political controversy'} and len(title) >= 8 and len(summary) >= 20 and not is_navigation_page(title, summary, source_url) and is_content_relevant(title, summary, story.geography) and is_story_recent_enough(story.publishedAt, story.collectedAt)
 
 
+def normalize_geography(value: object) -> list[str]:
+    values = value if isinstance(value, list) else ([value] if value else [])
+    normalized: list[str] = []
+    for item in values:
+        text = sanitize_text(item)
+        if not text:
+            continue
+        lowered = text.lower().replace(' ', '')
+        alias = STATE_ALIASES.get(lowered) or STATE_ALIASES.get(text.lower())
+        normalized.append(alias or text)
+    return list(dict.fromkeys(normalized))
+
+
+def get_demographic_signals(story: NormalizedStory | dict) -> list[dict]:
+    geography = normalize_geography(getattr(story, 'geography', None) or story.get('geography', []) if isinstance(story, dict) else getattr(story, 'geography', []))
+    signals = []
+    for location in geography:
+        profile = STATE_DEMOGRAPHIC_PROFILES.get(location.lower())
+        if profile:
+            signals.append({'state': location, **profile})
+    return signals
+
+
+def get_audience_profiles() -> list[dict]:
+    return [dict(profile) for profile in AUDIENCE_PROFILES]
+
+
+def build_audience_matches(story: NormalizedStory | dict) -> list[AudienceMatch]:
+    text = f"{getattr(story, 'title', '')} {getattr(story, 'summary', '')} {' '.join(getattr(story, 'narrativeTags', []) or [])}".lower()
+    demographic_signals = get_demographic_signals(story)
+    matches = []
+    for profile in get_audience_profiles():
+        matched_signals = [signal for signal in profile['signals'] if signal.lower() in text]
+        shared_value_alignment = sum(1 for value in profile['values'] if value.lower() in text)
+        narrative_relevance = min(100, max(0, 30 + len(matched_signals) * 12 + (15 if matched_signals else 0)))
+        geographic_relevance = min(100, max(0, 20 + len(demographic_signals) * 10 + (15 if any(geo.lower() in text for geo in profile['geography']) else 0))) if demographic_signals else 20
+        demographic_relevance = min(100, max(0, 35 + (sum(signal.get('hispanicShare', 0) for signal in demographic_signals if profile['id'] == 'aud_yh_evang') / 10) + (sum(signal.get('medianIncome', 0) for signal in demographic_signals if profile['id'] == 'aud_health') / 2000))) if demographic_signals else 25
+        evidence_quality = getattr(story, 'evidenceQuality', 60) or 60
+        score = round((narrative_relevance * 0.35) + (demographic_relevance * 0.25) + (geographic_relevance * 0.15) + ((shared_value_alignment * 15) * 0.15) + (evidence_quality * 0.1))
+        confidence = 88 if score >= 75 else 78 if score >= 60 else 66
+        matches.append(AudienceMatch(
+            audienceId=profile['id'],
+            audienceName=profile['name'],
+            matchScore=float(score),
+            confidence=float(confidence),
+            reasons=[f"Matched {', '.join(matched_signals[:3])}." if matched_signals else 'Narrative signals are moderately aligned.'] + (['Aligned with shared values and audience framing.'] if shared_value_alignment else []) + (['Demographic context supports relevance.'] if demographic_signals else []),
+            supportingSignals=matched_signals[:5],
+            geographicRelevance=float(geographic_relevance),
+            demographicRelevance=float(demographic_relevance),
+            narrativeRelevance=float(narrative_relevance),
+            dataMode='PARTIAL' if demographic_signals else 'RULE_BASED',
+            evidenceSources=[*(['demographic_context'] if demographic_signals else []), 'story_text', 'knip_profile'],
+            lastUpdated=datetime.now(timezone.utc),
+        ))
+    return sorted(matches, key=lambda item: item.matchScore, reverse=True)
+
+
 def normalize_story_item(item: IntelligenceItem | dict, connector_name: str, connector_label: str) -> NormalizedStory:
     source = item.source if isinstance(item, IntelligenceItem) else item.get("source")
     if isinstance(source, dict):
@@ -204,8 +281,7 @@ def normalize_story_item(item: IntelligenceItem | dict, connector_name: str, con
     strategic_relevance = min(100, max(0, round(strategic_score + (len(narratives) * 3))))
     source_reliability = min(100, max(0, round(source_record.reliability * 100)))
     relevance_score = round((evidence_quality * 0.25) + (audience_relevance * 0.25) + (strategic_relevance * 0.2) + (freshness_score * 0.15) + (authenticity_score * 0.1) + (source_reliability * 0.05))
-
-    return NormalizedStory(
+    story_payload = NormalizedStory(
         id=item.id if isinstance(item, IntelligenceItem) else item.get("id") or sha256(f"{connector_name}:{title}:{url or ''}".encode()).hexdigest()[:24],
         title=title,
         summary=summary[:900],
@@ -251,6 +327,12 @@ def normalize_story_item(item: IntelligenceItem | dict, connector_name: str, con
         )),
         status='VALIDATED' if relevance_score >= 78 else 'REVIEW',
     )
+    audience_matches = build_audience_matches(story_payload)
+    story_payload.audienceMatches = audience_matches
+    story_payload.bestAudienceMatch = audience_matches[0] if audience_matches else None
+    story_payload.audienceMatchScore = float(story_payload.bestAudienceMatch.matchScore) if story_payload.bestAudienceMatch else 0.0
+    story_payload.audienceDataMode = story_payload.bestAudienceMatch.dataMode if story_payload.bestAudienceMatch else 'RULE_BASED'
+    return story_payload
 
 
 def deduplicate_stories(stories: list[NormalizedStory]) -> list[NormalizedStory]:
@@ -283,6 +365,11 @@ def score_story(story: NormalizedStory) -> NormalizedStory:
     updated.relevanceScore = round((updated.evidenceQuality * 0.25) + (audience_relevance * 0.25) + (strategic_relevance * 0.2) + (updated.freshness * 0.15) + (updated.authenticityScore * 0.1) + (source_reliability * 0.05))
     updated.status = 'VALIDATED' if updated.relevanceScore >= 78 else 'REVIEW'
     updated.eligibleForExecutiveUse = is_executive_eligible(updated)
+    audience_matches = build_audience_matches(updated)
+    updated.audienceMatches = audience_matches
+    updated.bestAudienceMatch = audience_matches[0] if audience_matches else None
+    updated.audienceMatchScore = float(updated.bestAudienceMatch.matchScore) if updated.bestAudienceMatch else 0.0
+    updated.audienceDataMode = updated.bestAudienceMatch.dataMode if updated.bestAudienceMatch else 'RULE_BASED'
     return updated
 
 
@@ -340,10 +427,16 @@ def build_dashboard_payload(stories: list[NormalizedStory] | None = None, live: 
                 'delayImpact': 'Opportunity freshness declines as the news cycle advances.',
                 'sourceUrl': None,
                 'connector': None,
+                'bestAudienceName': 'Moderate Democrats',
+                'audienceMatchScore': 82,
+                'audienceConfidence': 78,
+                'audienceReasons': ['Fallback audience profile.'],
+                'audienceDataMode': 'RULE_BASED',
             },
         }
 
     priority = eligible[0]
+    best_match = priority.bestAudienceMatch
     return {
         'fallback': False,
         'source': source,
@@ -352,7 +445,7 @@ def build_dashboard_payload(stories: list[NormalizedStory] | None = None, live: 
         'priorityDecision': {
             'title': priority.title,
             'summary': priority.summary,
-            'audienceMatch': min(99, max(70, int(priority.relevanceScore * 0.9))),
+            'audienceMatch': int(round(priority.audienceMatchScore or min(99, max(70, int(priority.relevanceScore * 0.9))))),
             'evidenceQuality': int(priority.evidenceQuality),
             'strategicImpact': 'High' if priority.relevanceScore >= 80 else 'Medium',
             'strategicImpactScore': int(priority.relevanceScore),
@@ -362,6 +455,11 @@ def build_dashboard_payload(stories: list[NormalizedStory] | None = None, live: 
             'delayImpact': 'Opportunity freshness declines as the news cycle advances.',
             'sourceUrl': priority.sourceUrl,
             'connector': priority.connector,
+            'bestAudienceName': best_match.audienceName if best_match else 'Moderate Democrats',
+            'audienceMatchScore': int(round(best_match.matchScore)) if best_match else 0,
+            'audienceConfidence': int(round(best_match.confidence)) if best_match else 0,
+            'audienceReasons': best_match.reasons if best_match else [],
+            'audienceDataMode': best_match.dataMode if best_match else 'RULE_BASED',
         },
     }
 
@@ -386,6 +484,28 @@ async def connectors() -> dict:
 async def stories(q: str = Query(default='Israel innovation OR "Israeli technology"'), limit: int = Query(default=20, ge=1, le=100)) -> dict:
     normalized = await aggregate_story_intelligence(limit=limit)
     return {"count": len(normalized), "items": [item.model_dump(mode="json") for item in normalized]}
+
+
+@app.get("/api/audiences")
+async def audiences() -> dict:
+    return {"audiences": get_audience_profiles()}
+
+
+@app.get("/api/audiences/{audience_id}")
+async def audience_detail(audience_id: str) -> dict:
+    audience = next((item for item in get_audience_profiles() if item['id'] == audience_id), None)
+    if not audience:
+        raise HTTPException(status_code=404, detail="Audience not found")
+    return {"audience": audience}
+
+
+@app.get("/api/stories/{story_id}/audiences")
+async def story_audiences(story_id: str) -> dict:
+    stories = await aggregate_story_intelligence(limit=20)
+    story = next((item for item in stories if item.id == story_id), None)
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+    return {"storyId": story_id, "audienceMatches": [match.model_dump(mode="json") for match in story.audienceMatches], "bestAudienceMatch": story.bestAudienceMatch.model_dump(mode="json") if story.bestAudienceMatch else None, "audienceDataMode": story.audienceDataMode}
 
 
 @app.get("/api/demographics/states")

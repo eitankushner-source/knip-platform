@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from app.connectors.gdelt import GdeltConnector
 from app.connectors.research_agents import ResearchAgentConnector
 from app.connectors.rss import RssConnector
-from app.models import NormalizedStory
 
 
 class DashboardService:
@@ -34,7 +33,7 @@ class DashboardService:
         priority_payload = {
             "title": priority.title if priority else "Amplify Story: Kenyan Farmers Using Israeli Water Innovation",
             "summary": priority.summary if priority else "A verified human-impact story with strong relevance to climate resilience, food security, and moderate Democratic audiences.",
-            "audienceMatch": 94 if priority else 82,
+            "audienceMatch": int(round(priority.audienceMatchScore)) if priority else 82,
             "evidenceQuality": int(priority.evidenceQuality) if priority else 92,
             "strategicImpact": "High" if priority else "High",
             "strategicImpactScore": int(priority.relevanceScore) if priority else 88,
@@ -44,6 +43,11 @@ class DashboardService:
             "delayImpact": "Opportunity freshness declines as the news cycle advances.",
             "sourceUrl": priority.sourceUrl if priority else None,
             "connector": priority.connector if priority else None,
+            "bestAudienceName": (priority.bestAudienceMatch.audienceName if priority and priority.bestAudienceMatch else "Moderate Democrats"),
+            "audienceMatchScore": int(round(priority.bestAudienceMatch.matchScore)) if priority and priority.bestAudienceMatch else 82,
+            "audienceConfidence": int(round(priority.bestAudienceMatch.confidence)) if priority and priority.bestAudienceMatch else 78,
+            "audienceReasons": priority.bestAudienceMatch.reasons if priority and priority.bestAudienceMatch else ["Fallback audience profile."],
+            "audienceDataMode": priority.bestAudienceMatch.dataMode if priority and priority.bestAudienceMatch else "RULE_BASED",
         }
 
         return {
