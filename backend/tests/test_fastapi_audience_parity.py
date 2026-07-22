@@ -1,8 +1,8 @@
 from app.main import aggregate_story_intelligence, app, build_dashboard_payload, normalize_story_item
 from app.models import IntelligenceItem, SourceRecord
 from datetime import datetime, timezone
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
-from pathlib import Path
 
 
 client = TestClient(app)
@@ -123,26 +123,43 @@ def test_consensus_endpoint_exposes_consensus_and_minorities():
 
 
 def test_fastapi_route_inventory_contains_baseline_endpoints():
-    source = Path(__file__).resolve().parents[1] / 'app' / 'main.py'
-    contents = source.read_text(encoding='utf-8')
-    expected = [
-        '@app.get("/api/health")',
-        '@app.get("/api/dashboard")',
-        '@app.get("/api/connectors")',
-        '@app.get("/api/stories")',
-        '@app.get("/api/audiences")',
-        '@app.get("/api/audiences/{audience_id}")',
-        '@app.get("/api/stories/{story_id}/audiences")',
-        '@app.get("/api/advisory-board")',
-        '@app.get("/api/advisory-board/consensus")',
-        '@app.post("/api/advisory-board/challenge")',
-        '@app.get("/api/demographics/states")',
-        '@app.get("/api/rss")',
-        '@app.get("/api/research-agents")',
-        '@app.post("/api/research-agents/{agent_id}/run")',
-    ]
-    for marker in expected:
-        assert marker in contents
+    route_inventory = {
+        (method, route.path)
+        for route in app.routes
+        if isinstance(route, APIRoute)
+        for method in route.methods
+        if method in {'GET', 'POST'}
+    }
+
+    canonical_required = {
+        ('GET', '/api/health'),
+        ('GET', '/api/dashboard'),
+        ('GET', '/api/connectors'),
+        ('GET', '/api/stories'),
+        ('GET', '/api/audiences'),
+        ('GET', '/api/audiences/{audience_id}'),
+        ('GET', '/api/stories/{story_id}/audiences'),
+        ('GET', '/api/advisory-board/consensus'),
+        ('POST', '/api/advisory-board/challenge'),
+        ('GET', '/api/demographics/states'),
+        ('GET', '/api/rss'),
+        ('GET', '/api/research-agents'),
+        ('POST', '/api/research-agents/{agent_id}/run'),
+    }
+    assert canonical_required.issubset(route_inventory)
+
+    compatibility_required = {
+        ('GET', '/api/audience-intelligence'),
+        ('GET', '/api/advisory-board'),
+        ('GET', '/api/campaign-plans'),
+    }
+    assert compatibility_required.issubset(route_inventory)
+
+    has_advisory_detail_compatibility = any(
+        method == 'GET' and path.startswith('/api/advisory-board/{') and path.endswith('}')
+        for method, path in route_inventory
+    )
+    assert has_advisory_detail_compatibility
 
 
 def test_fastapi_baseline_smoke_endpoints_return_ok():
@@ -152,8 +169,71 @@ def test_fastapi_baseline_smoke_endpoints_return_ok():
         '/api/connectors',
         '/api/stories',
         '/api/audiences',
+        '/api/audience-intelligence',
         '/api/advisory-board',
+        '/api/campaign-plans',
     ]
     for path in checks:
         response = client.get(path)
         assert response.status_code == 200, f'{path} should return 200'
+
+
+def test_audience_intelligence_compatibility_shape():
+    response = client.get('/api/audience-intelligence')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'audiences' in payload
+    assert 'stories' in payload
+    assert isinstance(payload['audiences'], list)
+    assert isinstance(payload['stories'], list)
+    if payload['audiences']:
+        audience = payload['audiences'][0]
+        assert 'topStories' in audience
+        assert 'averageMatch' in audience
+        assert isinstance(audience['topStories'], list)
+
+
+def test_advisory_board_compatibility_shape_includes_sessions_without_removing_canonical_fields():
+    response = client.get('/api/advisory-board')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'advisoryBoard' in payload
+    assert 'advisoryConsensus' in payload
+    assert 'sessions' in payload
+    assert isinstance(payload['sessions'], list)
+    if payload['sessions']:
+        session = payload['sessions'][0]
+        assert 'briefId' in session
+        assert 'title' in session
+        assert 'advisors' in session
+        assert 'agreements' in session
+        assert 'disagreements' in session
+
+
+def test_advisory_board_detail_compatibility_shape():
+    listing = client.get('/api/advisory-board')
+    assert listing.status_code == 200
+    sessions = listing.json()['sessions']
+    assert sessions
+    brief_id = sessions[0]['briefId']
+    response = client.get(f'/api/advisory-board/{brief_id}')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'session' in payload
+    assert payload['session']['briefId'] == brief_id
+    assert isinstance(payload['session']['advisors'], list)
+
+
+def test_campaign_plans_compatibility_shape():
+    response = client.get('/api/campaign-plans')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'campaignPlans' in payload
+    assert isinstance(payload['campaignPlans'], list)
+    if payload['campaignPlans']:
+        plan = payload['campaignPlans'][0]
+        assert 'title' in plan
+        assert 'channels' in plan
+        assert 'dependencies' in plan
+        assert 'ruby' in plan
+        assert plan['ruby']['name'] == 'Ruby'

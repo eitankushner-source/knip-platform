@@ -32,6 +32,7 @@ gdelt = GdeltConnector()
 census = CensusConnector()
 rss = RssConnector()
 research_agents = ResearchAgentConnector()
+_ADVISORY_SESSION_CACHE: dict[str, dict] = {}
 
 AUDIENCE_PROFILES = [
     {'id': 'aud_mod_dems', 'name': 'Moderate Democrats', 'signals': ['democracy', 'bipartisan cooperation', 'climate resilience', 'healthcare', 'humanitarian impact', 'pragmatic u.s.–israel cooperation'], 'values': ['cooperation', 'pragmatism', 'shared values'], 'geography': ['United States'], 'channels': ['email', 'digital video'], 'messengers': ['community leaders']},
@@ -446,6 +447,150 @@ def build_dashboard_payload(stories: list[NormalizedStory] | None = None, live: 
     return payload
 
 
+def build_audience_intelligence_payload(stories: list[NormalizedStory] | None = None) -> dict:
+    story_list = list(stories or [])
+    audience_summaries: list[dict] = []
+    story_rows: list[dict] = []
+
+    for story in story_list:
+        story_rows.append({
+            'story': story.model_dump(mode='json'),
+            'analysis': None,
+            'matches': [match.model_dump(mode='json') for match in story.audienceMatches],
+        })
+
+    for audience in get_audience_profiles():
+        ranked: list[dict] = []
+        for story in story_list:
+            match = next((item for item in story.audienceMatches if item.audienceId == audience['id']), None)
+            if not match:
+                continue
+            opportunity = int(round(story.relevanceScore))
+            risk = int(round(max(0, min(100, 100 - (story.authenticityScore * 0.35) - (story.evidenceQuality * 0.25)))))
+            emotional_fit = int(round(max(0, min(100, (story.authenticityScore * 0.55) + (story.confidence * 45)))))
+            credibility_fit = int(round(max(0, min(100, (story.evidenceQuality * 0.7) + (story.sourceReliability * 0.3)))))
+            ranked.append({
+                'storyId': story.id,
+                'storyTitle': story.title,
+                'audienceId': match.audienceId,
+                'name': audience['name'],
+                'description': audience.get('description', ''),
+                'match': int(round(match.matchScore)),
+                'opportunity': opportunity,
+                'risk': risk,
+                'thematicFit': int(round(match.narrativeRelevance)),
+                'emotionalFit': emotional_fit,
+                'credibilityFit': credibility_fit,
+                'rationale': match.reasons[0] if match.reasons else 'Moderate fit; additional evidence and audience testing would improve confidence.',
+                'reasons': match.reasons,
+                'channels': audience.get('channels', []),
+                'messengers': audience.get('messengers', []),
+                'framing': audience.get('framing', 'Lead with concrete human impact and avoid political abstraction.'),
+            })
+        ranked.sort(key=lambda item: item['match'], reverse=True)
+        average_match = int(round(sum(item['match'] for item in ranked) / len(ranked))) if ranked else 0
+        audience_summaries.append({
+            **audience,
+            'topStories': ranked[:5],
+            'averageMatch': average_match,
+        })
+
+    return {'audiences': audience_summaries, 'stories': story_rows}
+
+
+def build_advisory_sessions(stories: list[NormalizedStory] | None = None) -> list[dict]:
+    story_list = list(stories or [])
+    sessions: list[dict] = []
+    for index, story in enumerate(story_list[:5], start=1):
+        advisors, consensus, minority_opinion, _decision_readiness = build_advisory_board(story, 'LIVE' if story else 'FALLBACK')
+        agreement_label = 'STRONG CONSENSUS' if consensus.agreementCount >= 4 else 'QUALIFIED CONSENSUS' if consensus.agreementCount >= 3 else 'MIXED VIEW'
+        recommendation = 'APPROVE WITH CONDITIONS' if consensus.consensusRecommendation in {'APPROVE', 'MODIFY'} else 'HOLD' if consensus.consensusRecommendation in {'DELAY', 'REJECT'} else 'RESEARCH MORE'
+        sessions.append({
+            'briefId': f'brief_{story.id or f"{index:03d}"}',
+            'title': story.title,
+            'audience': story.bestAudienceMatch.audienceName if story.bestAudienceMatch else 'Moderate Democrats',
+            'advisors': [
+                {
+                    'name': item.advisorName,
+                    'role': item.role,
+                    'position': item.recommendation,
+                    'assessment': item.reasoning,
+                    'confidence': int(round(item.confidence)),
+                }
+                for item in advisors
+            ],
+            'consensus': agreement_label,
+            'agreements': [
+                consensus.majorityReason,
+                'The board sees an evidence-backed narrative opportunity worth executive review.',
+            ],
+            'disagreements': [
+                minority_opinion,
+                'Advisors place different weight on evidence completeness, timing, and monitoring readiness.',
+            ],
+            'conditions': list(consensus.unresolvedQuestions[:3]),
+            'recommendation': recommendation,
+            'confidence': int(round(consensus.consensusConfidence)),
+            'executiveQuestion': f'Should KNIP advance “{story.title}” for {story.bestAudienceMatch.audienceName if story.bestAudienceMatch else "Moderate Democrats"}?',
+        })
+    return sessions
+
+
+def build_campaign_plans(stories: list[NormalizedStory] | None = None) -> list[dict]:
+    story_list = list(stories or [])
+    audiences = get_audience_profiles()
+    plans: list[dict] = []
+    for story in story_list[:5]:
+        audience_name = story.bestAudienceMatch.audienceName if story.bestAudienceMatch else 'Moderate Democrats'
+        audience = next((item for item in audiences if item['name'] == audience_name), None) or {}
+        confidence = int(round((story.relevanceScore + story.evidenceQuality + (story.bestAudienceMatch.confidence if story.bestAudienceMatch else 78)) / 3))
+        objective = 'Change perceptions' if confidence >= 88 else 'Build trust' if confidence >= 78 else 'Increase awareness'
+        priority = 'IMMEDIATE' if confidence >= 90 else 'HIGH' if confidence >= 82 else 'NORMAL'
+        recommendation = 'PROCEED' if confidence >= 88 else 'PROCEED_WITH_REVISIONS' if confidence >= 75 else 'HOLD'
+        budget = 'MEDIUM' if confidence >= 90 else 'SMALL'
+        channels = audience.get('channels', ['Instagram', 'Partner newsletters'])
+        messengers = audience.get('messengers', ['Field practitioners'])
+        complexity = 'COMPLEX' if len(channels) > 3 else 'MEDIUM'
+        plans.append({
+            'id': f'campaign_{story.id}',
+            'briefId': f'brief_{story.id}',
+            'storyId': story.id,
+            'title': story.title,
+            'audience': audience_name,
+            'status': 'DRAFT',
+            'durationWeeks': 4,
+            'confidence': confidence,
+            'objective': objective,
+            'priority': priority,
+            'budget': budget,
+            'complexity': complexity,
+            'framing': audience.get('framing', 'Lead with authentic human impact, shared values, and measurable outcomes.'),
+            'channels': channels,
+            'messengers': messengers,
+            'coreMessages': ['Lead with the people affected', 'Show measurable outcomes', 'Mention Israel after the human benefit'],
+            'assets': ['60-second video', 'Infographic', 'Human-interest article', 'Social media carousel'],
+            'cta': 'Learn how practical Israeli innovation is improving lives.',
+            'kpis': ['Reach', 'Engagement', 'Positive sentiment', 'Click-through rate'],
+            'dependencies': ['Confirm one additional independent outcome source', 'Secure participant permissions', 'Prepare audience-specific creative assets'],
+            'ruby': {
+                'name': 'Ruby',
+                'role': 'Chief Strategy Officer',
+                'recommendation': recommendation,
+                'confidence': confidence,
+                'objective': objective,
+                'priority': priority,
+                'budget': budget,
+                'complexity': complexity,
+                'narrative': 'Human Story',
+                'summary': f'Position this as a {objective.lower()} campaign. Lead with the beneficiaries, mention Israel second, avoid political framing, and emphasize verified human impact.',
+                'strengths': ['Strong human-interest angle', 'Clear audience relevance', 'Practical and measurable benefit'],
+                'risks': ['Avoid promotional tone', 'Verify all outcome claims'],
+                'why': f'This recommendation reflects {confidence}% decision confidence, the selected audience profile, evidence quality, and execution feasibility.',
+            },
+        })
+    return plans
+
+
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok", "version": "0.2.0-rc2", "time": datetime.now(timezone.utc).isoformat()}
@@ -481,6 +626,12 @@ async def audience_detail(audience_id: str) -> dict:
     return {"audience": audience}
 
 
+@app.get("/api/audience-intelligence")
+async def audience_intelligence() -> dict:
+    stories = await aggregate_story_intelligence(limit=20)
+    return build_audience_intelligence_payload(stories)
+
+
 @app.get("/api/stories/{story_id}/audiences")
 async def story_audiences(story_id: str) -> dict:
     stories = await aggregate_story_intelligence(limit=20)
@@ -495,12 +646,18 @@ async def advisory_board() -> dict:
     stories = await aggregate_story_intelligence(limit=20)
     priority = stories[0] if stories else None
     board, consensus, minority_opinion, decision_readiness = build_advisory_board(priority, 'LIVE' if priority else 'FALLBACK')
+    sessions = build_advisory_sessions(stories)
+    _ADVISORY_SESSION_CACHE.clear()
+    _ADVISORY_SESSION_CACHE.update(
+        {session["briefId"]: session for session in sessions}
+    )
     return {
         "advisoryBoard": [item.model_dump(mode='json') for item in board],
         "advisoryConsensus": consensus.model_dump(mode='json'),
         "minorityOpinion": minority_opinion,
         "decisionReadiness": decision_readiness,
         "sourceMode": consensus.sourceMode,
+        "sessions": sessions,
     }
 
 
@@ -522,6 +679,24 @@ async def advisory_board_challenge(payload: dict) -> dict:
     priority = stories[0] if stories else None
     challenge = payload.get('challenge', '') if isinstance(payload, dict) else ''
     return challenge_advisory_board(challenge, priority, 'LIVE' if priority else 'FALLBACK')
+
+
+@app.get("/api/advisory-board/{brief_id}")
+async def advisory_board_detail(brief_id: str) -> dict:
+    session = _ADVISORY_SESSION_CACHE.get(brief_id)
+    if not session:
+        stories = await aggregate_story_intelligence(limit=20)
+        sessions = build_advisory_sessions(stories)
+        session = next((item for item in sessions if item['briefId'] == brief_id), None)
+    if not session:
+        raise HTTPException(status_code=404, detail="Advisory session not found")
+    return {"session": session}
+
+
+@app.get("/api/campaign-plans")
+async def campaign_plans() -> dict:
+    stories = await aggregate_story_intelligence(limit=20)
+    return {"campaignPlans": build_campaign_plans(stories)}
 
 
 @app.get("/api/demographics/states")
