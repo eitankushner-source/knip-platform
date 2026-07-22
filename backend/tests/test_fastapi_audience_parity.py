@@ -152,6 +152,7 @@ def test_fastapi_route_inventory_contains_baseline_endpoints():
         ('GET', '/api/audience-intelligence'),
         ('GET', '/api/advisory-board'),
         ('GET', '/api/campaign-plans'),
+        ('GET', '/api/campaign-plans/{plan_id}'),
     }
     assert compatibility_required.issubset(route_inventory)
 
@@ -188,9 +189,34 @@ def test_audience_intelligence_compatibility_shape():
     assert isinstance(payload['stories'], list)
     if payload['audiences']:
         audience = payload['audiences'][0]
+        assert 'id' in audience
+        assert 'name' in audience
+        assert 'values' in audience
+        assert 'channels' in audience
+        assert 'messengers' in audience
         assert 'topStories' in audience
         assert 'averageMatch' in audience
         assert isinstance(audience['topStories'], list)
+
+
+def test_audience_detail_compatibility_shape_preserves_profile_fields():
+    listing = client.get('/api/audiences')
+    assert listing.status_code == 200
+    audiences = listing.json()['audiences']
+    assert audiences
+    audience_id = audiences[0]['id']
+
+    response = client.get(f'/api/audiences/{audience_id}')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'audience' in payload
+
+    audience = payload['audience']
+    assert audience['id'] == audience_id
+    assert set(audiences[0]).issubset(audience.keys())
+    assert 'name' in audience
+    assert 'channels' in audience
+    assert 'messengers' in audience
 
 
 def test_advisory_board_compatibility_shape_includes_sessions_without_removing_canonical_fields():
@@ -237,3 +263,29 @@ def test_campaign_plans_compatibility_shape():
         assert 'dependencies' in plan
         assert 'ruby' in plan
         assert plan['ruby']['name'] == 'Ruby'
+
+
+def test_campaign_plan_detail_compatibility_shape_preserves_plan_fields():
+    listing = client.get('/api/campaign-plans')
+    assert listing.status_code == 200
+    plans = listing.json()['campaignPlans']
+    assert plans
+
+    plan_id = plans[0]['id']
+    response = client.get(f'/api/campaign-plans/{plan_id}')
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'campaignPlan' in payload
+
+    plan = payload['campaignPlan']
+    assert plan['id'] == plan_id
+    assert set(plans[0]).issubset(plan.keys())
+    assert 'ruby' in plan
+    assert 'channels' in plan
+    assert 'dependencies' in plan
+
+
+def test_campaign_plan_detail_returns_404_for_missing_plan():
+    response = client.get('/api/campaign-plans/does-not-exist')
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'Campaign plan not found'

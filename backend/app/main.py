@@ -33,6 +33,7 @@ census = CensusConnector()
 rss = RssConnector()
 research_agents = ResearchAgentConnector()
 _ADVISORY_SESSION_CACHE: dict[str, dict] = {}
+_CAMPAIGN_PLAN_CACHE: dict[str, dict] = {}
 
 AUDIENCE_PROFILES = [
     {'id': 'aud_mod_dems', 'name': 'Moderate Democrats', 'signals': ['democracy', 'bipartisan cooperation', 'climate resilience', 'healthcare', 'humanitarian impact', 'pragmatic u.s.–israel cooperation'], 'values': ['cooperation', 'pragmatism', 'shared values'], 'geography': ['United States'], 'channels': ['email', 'digital video'], 'messengers': ['community leaders']},
@@ -696,7 +697,22 @@ async def advisory_board_detail(brief_id: str) -> dict:
 @app.get("/api/campaign-plans")
 async def campaign_plans() -> dict:
     stories = await aggregate_story_intelligence(limit=20)
-    return {"campaignPlans": build_campaign_plans(stories)}
+    plans = build_campaign_plans(stories)
+    _CAMPAIGN_PLAN_CACHE.clear()
+    _CAMPAIGN_PLAN_CACHE.update({plan["id"]: plan for plan in plans})
+    return {"campaignPlans": plans}
+
+
+@app.get("/api/campaign-plans/{plan_id}")
+async def campaign_plan_detail(plan_id: str) -> dict:
+    campaign_plan = _CAMPAIGN_PLAN_CACHE.get(plan_id)
+    if not campaign_plan:
+        stories = await aggregate_story_intelligence(limit=20)
+        campaign_plans = build_campaign_plans(stories)
+        campaign_plan = next((item for item in campaign_plans if item["id"] == plan_id), None)
+    if not campaign_plan:
+        raise HTTPException(status_code=404, detail="Campaign plan not found")
+    return {"campaignPlan": campaign_plan}
 
 
 @app.get("/api/demographics/states")

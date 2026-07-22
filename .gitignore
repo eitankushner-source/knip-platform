@@ -5,3 +5,6 @@ coverage/
 .DS_Store
 Thumbs.db
 *.log
+
+_pycache_/
+*.pyc

@@ -11,7 +11,12 @@
     connectors: { method: 'GET', path: '/connectors', mode: 'LIVE|DEGRADED', consumer: 'platform architecture diagnostics' },
     researchAgents: { method: 'GET', path: '/research-agents', mode: 'LIVE', consumer: 'research agent registry' },
     researchAgentRun: { method: 'POST', path: '/research-agents/{agentId}/run', mode: 'LIVE', consumer: 'research agent execution' },
-    stateDemographics: { method: 'GET', path: '/demographics/states', mode: 'LIVE', consumer: 'audience demographic overlays' }
+    stateDemographics: { method: 'GET', path: '/demographics/states', mode: 'LIVE', consumer: 'audience demographic overlays' },
+    audiences: { method: 'GET', path: '/audiences', mode: 'LIVE', consumer: 'audience profile directory' },
+    audienceDetail: { method: 'GET', path: '/audiences/{audienceId}', mode: 'LIVE', consumer: 'audience drill-in' },
+    audienceIntelligence: { method: 'GET', path: '/audience-intelligence', mode: 'LIVE', consumer: 'ranked audience-fit summaries' },
+    campaignPlans: { method: 'GET', path: '/campaign-plans', mode: 'LIVE', consumer: 'campaign planning summaries' },
+    campaignPlanDetail: { method: 'GET', path: '/campaign-plans/{planId}', mode: 'LIVE', consumer: 'campaign plan drill-in' }
   });
 
   const fallbackDashboard = {
