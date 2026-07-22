@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class SourceRecord(BaseModel):
@@ -25,6 +25,27 @@ class IntelligenceItem(BaseModel):
     confidence: float = Field(ge=0, le=1)
     source: SourceRecord
     raw: dict[str, Any] = {}
+
+
+class NormalizedStory(BaseModel):
+    id: str
+    title: str
+    summary: str
+    sourceName: str
+    sourceUrl: str | None = None
+    publishedAt: datetime | None = None
+    collectedAt: datetime
+    connector: str
+    geography: list[str] = []
+    audienceTags: list[str] = []
+    narrativeTags: list[str] = []
+    reliability: float = Field(ge=0, le=1)
+    confidence: float = Field(ge=0, le=1)
+    freshness: float = Field(ge=0, le=100)
+    relevanceScore: float = Field(ge=0, le=100)
+    authenticityScore: float = Field(ge=0, le=100)
+    evidenceQuality: float = Field(ge=0, le=100)
+    status: str = 'REVIEW'
 
 
 class ConnectorStatus(BaseModel):

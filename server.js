@@ -190,6 +190,115 @@ function analyzeStory(story, evidence, audiences) {
   return analysis;
 }
 
+function normalizeStoryItem(story, connector='local', connectorLabel='Local story repository') {
+  const title = String(story.title || story.name || 'Untitled story').trim();
+  const summary = String(story.summary || story.description || 'Story summary unavailable.').trim();
+  const publishedAt = story.publishedAt || story.published_at || story.createdAt || null;
+  const sourceUrl = story.sourceUrl || story.url || story.source_url || null;
+  const sourceName = story.sourceName || story.source?.source_name || story.source?.sourceName || story.source || story.source_name || connectorLabel;
+  const collectedAt = story.collectedAt || story.collected_at || new Date().toISOString();
+  const geography = Array.isArray(story.geography) ? story.geography.filter(Boolean) : (story.geography ? [story.geography] : []);
+  const audienceTags = Array.isArray(story.audienceTags) ? story.audienceTags.filter(Boolean) : (Array.isArray(story.audiences) ? story.audiences.filter(Boolean) : []);
+  const narrativeTags = Array.isArray(story.narrativeTags) ? story.narrativeTags.filter(Boolean) : (Array.isArray(story.narratives) ? story.narratives.filter(Boolean) : []);
+  const reliability = Number(story.reliability ?? story.source?.reliability ?? 0.72);
+  const confidence = Number(story.confidence ?? 0.76);
+  const evidenceQuality = Number(story.evidenceQuality ?? Math.min(100, Math.max(0, Math.round((reliability * 100) * 0.7 + confidence * 100 * 0.3))));
+  const freshness = Number(story.freshness ?? 90);
+  const authenticityScore = Number(story.authenticityScore ?? Math.min(100, Math.max(0, Math.round((confidence * 100 * 0.55) + (evidenceQuality * 0.45)))));
+  const audienceRelevance = Math.min(100, Math.max(0, Math.round((audienceTags.length * 20 * 0.6) + (evidenceQuality * 0.4))));
+  const strategicRelevance = Math.min(100, Math.max(0, Math.round((narrativeTags.length * 18 * 0.55) + ((evidenceQuality + 10) * 0.45))));
+  const relevanceScore = Math.round((evidenceQuality * 0.3) + (audienceRelevance * 0.25) + (freshness * 0.2) + (authenticityScore * 0.15) + (strategicRelevance * 0.1));
+  return {
+    id: String(story.id || `${connector}:${title}`),
+    title,
+    summary,
+    sourceName,
+    sourceUrl,
+    publishedAt: publishedAt ? new Date(publishedAt).toISOString() : null,
+    collectedAt: new Date(collectedAt).toISOString(),
+    connector: connectorLabel,
+    geography,
+    audienceTags,
+    narrativeTags,
+    reliability: Math.min(1, Math.max(0, reliability)),
+    confidence: Math.min(1, Math.max(0, confidence)),
+    freshness,
+    relevanceScore,
+    authenticityScore,
+    evidenceQuality,
+    status: relevanceScore >= 78 ? 'VALIDATED' : 'REVIEW'
+  };
+}
+function deduplicateStories(stories) {
+  const deduped = [];
+  for (const story of [...stories].sort((a, b) => b.relevanceScore - a.relevanceScore)) {
+    const titleKey = String(story.title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const sourceKey = story.sourceName ? String(story.sourceName).toLowerCase() : '';
+    const dateKey = story.publishedAt ? story.publishedAt.slice(0, 10) : '';
+    const urlKey = story.sourceUrl ? story.sourceUrl.toLowerCase() : '';
+    const isDuplicate = deduped.some(existing => {
+      const existingTitle = String(existing.title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const titleTokens = new Set(titleKey.split(/\s+/).filter(Boolean));
+      const existingTokens = new Set(existingTitle.split(/\s+/).filter(Boolean));
+      const overlap = titleTokens.size && existingTokens.size ? [...titleTokens].filter(token => existingTokens.has(token)).length / Math.max(titleTokens.size, existingTokens.size) : 0;
+      const titleSimilarity = titleKey && existingTitle ? (titleKey.includes(existingTitle) || existingTitle.includes(titleKey) || overlap >= 0.55) : false;
+      const sameUrl = urlKey && existing.sourceUrl ? urlKey === existing.sourceUrl.toLowerCase() : false;
+      const sameSourceDate = sourceKey && existing.sourceName ? (sourceKey === String(existing.sourceName).toLowerCase() && ((dateKey && existing.publishedAt && dateKey === existing.publishedAt.slice(0, 10)) || (!dateKey && !existing.publishedAt))) : false;
+      return sameUrl || titleSimilarity || sameSourceDate;
+    });
+    if (isDuplicate) continue;
+    deduped.push(story);
+  }
+  return deduped;
+}
+function scoreStory(story) {
+  return normalizeStoryItem({ ...story, evidenceQuality: story.evidenceQuality, freshness: story.freshness, authenticityScore: story.authenticityScore, audienceTags: story.audienceTags, narrativeTags: story.narrativeTags, reliability: story.reliability, confidence: story.confidence }, story.connector || 'local', story.connector || 'Local story repository');
+}
+function buildDashboardPayload(stories = [], live = false) {
+  const inputStories = Array.isArray(stories) ? stories : [];
+  const normalized = deduplicateStories(inputStories.map(story => scoreStory(story)));
+  if (!normalized.length) {
+    return {
+      fallback: true,
+      source: 'FALLBACK',
+      metrics: { storiesValidated: { value: inputStories.length || 4, trend: 'FALLBACK' } },
+      priorityDecision: {
+        title: 'Amplify Story: Kenyan Farmers Using Israeli Water Innovation',
+        summary: 'A verified human-impact story with strong relevance to climate resilience, food security, and moderate Democratic audiences.',
+        audienceMatch: 82,
+        evidenceQuality: 92,
+        strategicImpact: 'High',
+        strategicImpactScore: 88,
+        readiness: 96,
+        readinessState: 'READY',
+        approvedImpact: 'Potential reach and engagement require human validation before publication.',
+        delayImpact: 'Opportunity freshness declines as the news cycle advances.',
+        sourceUrl: null,
+        connector: null,
+      },
+    };
+  }
+  const priority = normalized[0];
+  return {
+    fallback: !live,
+    source: live ? 'LIVE' : 'FALLBACK',
+    metrics: { storiesValidated: { value: inputStories.length || normalized.length, trend: live ? 'LIVE' : 'FALLBACK' } },
+    priorityDecision: {
+      title: priority.title,
+      summary: priority.summary,
+      audienceMatch: Math.min(99, Math.max(70, Math.round(priority.relevanceScore * 0.9))),
+      evidenceQuality: Math.round(priority.evidenceQuality),
+      strategicImpact: priority.relevanceScore >= 80 ? 'High' : 'Medium',
+      strategicImpactScore: Math.round(priority.relevanceScore),
+      readiness: Math.round(priority.relevanceScore * 0.95),
+      readinessState: priority.status,
+      approvedImpact: 'Potential reach and engagement require human validation before publication.',
+      delayImpact: 'Opportunity freshness declines as the news cycle advances.',
+      sourceUrl: priority.sourceUrl,
+      connector: priority.connector,
+    },
+  };
+}
 function buildCampaignPlans(db){
   const briefs=db.decisionBriefs||[]; const audiences=db.audiences||[];
   return briefs.map((brief,index)=>{
@@ -245,10 +354,34 @@ function buildLearningIntelligence(db) {
   return { metrics:{totalDecisions:records.length,completedCampaigns:completed.length,successRate,lessonsCaptured:records.filter(r=>r.lessonsLearned).length,reusablePatterns:reusablePatterns.length}, reusablePatterns, insights, records };
 }
 
+export { normalizeStoryItem, deduplicateStories, scoreStory, buildDashboardPayload };
+
 export async function handleRequest(req,res) {
   const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
   if(req.method==='GET'&&url.pathname==='/api/health') return sendJson(res,200,{status:'ok',service:'knip-platform',version:VERSION,timestamp:new Date().toISOString()});
   if(req.method==='GET'&&url.pathname==='/api/audiences'){const db=await readDb();return sendJson(res,200,{audiences:db.audiences||[]});}
+  if(req.method==='GET'&&url.pathname==='/api/dashboard'){
+    const db=await readDb();
+    const sourceStories = (db.stories||[]).map(story => ({
+      ...story,
+      sourceName: story.source || 'Local story repository',
+      sourceUrl: story.urls?.[0] || story.sourceUrl || null,
+      publishedAt: story.publishedAt || story.createdAt || null,
+      collectedAt: story.updatedAt || story.createdAt || new Date().toISOString(),
+      connector: story.sourceType ? 'Local Story Repository' : 'Local story repository',
+      geography: story.country ? [story.country] : [],
+      audienceTags: story.tags?.length ? story.tags : ['community'],
+      narrativeTags: story.tags?.length ? story.tags : ['innovation'],
+      reliability: 0.78,
+      confidence: 0.8,
+      evidenceQuality: 82,
+      freshness: 88,
+      authenticityScore: 84,
+      status: 'REVIEW',
+    }));
+    const stories = sourceStories.map(story => scoreStory(normalizeStoryItem(story, 'local', story.connector || 'Local Story Repository')));
+    return sendJson(res,200,buildDashboardPayload(stories, stories.length > 0));
+  }
   if(req.method==='GET'&&url.pathname==='/api/audience-intelligence'){
     const db=await readDb();
     const stories=(db.stories||[]).map(story=>{const analysis=(db.analyses||[]).find(item=>item.storyId===story.id)||null;return{story,analysis,matches:analysis?matchAudiences(story,analysis,db.audiences||[]):[]};});
@@ -256,7 +389,29 @@ export async function handleRequest(req,res) {
     return sendJson(res,200,{audiences:audienceSummaries,stories});
   }
   if(req.method==='GET'&&url.pathname==='/api/stories'){
-    const db=await readDb(); const stories=(db.stories||[]).map(s=>({...s,evidenceCount:(db.evidence||[]).filter(e=>e.storyId===s.id).length,latestAnalysis:(db.analyses||[]).find(a=>a.storyId===s.id)||null})); return sendJson(res,200,{stories});
+    const db=await readDb();
+    const sourceStories = (db.stories||[]).map(story => ({
+      ...story,
+      evidenceCount:(db.evidence||[]).filter(e=>e.storyId===story.id).length,
+      latestAnalysis:(db.analyses||[]).find(a=>a.storyId===story.id)||null,
+      sourceName: story.source || 'Local story repository',
+      sourceUrl: story.urls?.[0] || story.sourceUrl || null,
+      publishedAt: story.publishedAt || story.createdAt || null,
+      collectedAt: story.updatedAt || story.createdAt || new Date().toISOString(),
+      connector: story.sourceType ? 'Local Story Repository' : 'Local story repository',
+      geography: story.country ? [story.country] : [],
+      audienceTags: story.tags?.length ? story.tags : ['community'],
+      narrativeTags: story.tags?.length ? story.tags : ['innovation'],
+      reliability: 0.78,
+      confidence: 0.8,
+      evidenceQuality: 82,
+      freshness: 88,
+      authenticityScore: 84,
+      status: 'REVIEW',
+    }));
+    const normalized = deduplicateStories(sourceStories.map(story => scoreStory(normalizeStoryItem(story, 'local', story.connector || 'Local Story Repository'))));
+    const storiesPayload = normalized.map(item => ({...item, evidenceCount:(db.evidence||[]).filter(e=>e.storyId===item.id).length, latestAnalysis:(db.analyses||[]).find(a=>a.storyId===item.id)||null}));
+    return sendJson(res,200,{stories:storiesPayload,items:storiesPayload,count:storiesPayload.length});
   }
   const storyMatch=url.pathname.match(/^\/api\/stories\/([^/]+)$/);
   if(req.method==='GET'&&storyMatch){const db=await readDb();const story=db.stories.find(s=>s.id===storyMatch[1]);if(!story)return sendJson(res,404,{error:'Story not found'});return sendJson(res,200,{story,evidence:(db.evidence||[]).filter(e=>e.storyId===story.id),analyses:(db.analyses||[]).filter(a=>a.storyId===story.id)});}

@@ -1,7 +1,63 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {handleRequest} from '../server.js';
+import test from 'node:test';import assert from 'node:assert/strict';import {handleRequest, normalizeStoryItem, deduplicateStories, scoreStory, buildDashboardPayload} from '../server.js';
 function res(){return{statusCode:0,headers:{},body:'',writeHead(s,h){this.statusCode=s;this.headers=h},end(c=''){this.body+=c}}}
 async function call(method,url,body){const r=res();const req={method,url,headers:{host:'localhost'},async *[Symbol.asyncIterator](){if(body)yield Buffer.from(JSON.stringify(body))}};await handleRequest(req,r);return{status:r.statusCode,payload:JSON.parse(r.body)}}
 test('health returns Sprint 9 version',async()=>{const r=await call('GET','/api/health');assert.equal(r.status,200);assert.equal(r.payload.version,'0.9.0-alpha-ai-advisory-board')});
+
+test('normalized stories include provenance and scoring metadata', async () => {
+  const story = normalizeStoryItem({
+    id:'live_001',
+    title:'Israeli water tech helps drought-hit communities',
+    summary:'A practical innovation is helping farmers address water scarcity.',
+    published_at:'2026-07-20T12:00:00Z',
+    url:'https://example.com/story-1',
+    geography:['Israel'],
+    audiences:['farmers','community'],
+    narratives:['resilience','innovation'],
+    confidence:0.86,
+    source:{connector:'gdelt-doc',source_name:'The Times of Israel',source_url:'https://example.com/story-1',collected_at:'2026-07-21T10:00:00Z',reliability:0.82,freshness:'live',license_note:'live metadata'}
+  }, 'gdelt-doc', 'GDELT DOC 2.0');
+  assert.equal(story.connector,'GDELT DOC 2.0');
+  assert.equal(story.sourceName,'The Times of Israel');
+  assert.equal(story.sourceUrl,'https://example.com/story-1');
+  assert.ok(Array.isArray(story.audienceTags));
+  assert.ok(typeof story.relevanceScore === 'number');
+  assert.ok(story.status === 'VALIDATED' || story.status === 'REVIEW');
+});
+
+test('deduplication collapses near-duplicate stories', () => {
+  const stories = [
+    normalizeStoryItem({id:'dup_a', title:'Israeli water tech helps drought-hit communities', summary:'A practical innovation...', published_at:'2026-07-20T12:00:00Z', url:'https://example.com/story-1', geography:['Israel'], audiences:['farmers'], narratives:['resilience'], confidence:0.8, source:{connector:'gdelt-doc',source_name:'The Times',source_url:'https://example.com/story-1',collected_at:'2026-07-21T10:00:00Z',reliability:0.8,freshness:'live',license_note:'x'}} , 'gdelt-doc', 'GDELT DOC 2.0'),
+    normalizeStoryItem({id:'dup_b', title:'Israeli water technology helps drought-struck communities', summary:'A practical innovation...', published_at:'2026-07-20T12:00:00Z', url:'https://example.com/story-2', geography:['Israel'], audiences:['farmers'], narratives:['resilience'], confidence:0.77, source:{connector:'rss',source_name:'Another Source',source_url:'https://example.com/story-2',collected_at:'2026-07-21T10:00:00Z',reliability:0.78,freshness:'live',license_note:'x'}} , 'rss', 'Curated RSS')
+  ];
+  const deduped = deduplicateStories(stories);
+  assert.equal(deduped.length, 1);
+});
+
+test('story scoring weights evidence, audience, freshness, authenticity, and strategic relevance', () => {
+  const story = scoreStory(normalizeStoryItem({id:'score_001', title:'Israeli innovation improves community resilience', summary:'A strong example of practical impact.', published_at:'2026-07-21T08:00:00Z', url:'https://example.com/score', geography:['Israel'], audiences:['community','farmers'], narratives:['resilience','innovation'], confidence:0.88, source:{connector:'gdelt-doc',source_name:'Reuters',source_url:'https://example.com/score',collected_at:'2026-07-21T09:00:00Z',reliability:0.9,freshness:'live',license_note:'x'}} , 'gdelt-doc', 'GDELT DOC 2.0'));
+  assert.ok(story.relevanceScore >= 75);
+  assert.ok(story.evidenceQuality >= 80);
+  assert.ok(story.freshness >= 80);
+  assert.ok(story.authenticityScore >= 80);
+});
+
+test('dashboard priority selection uses the highest-ranked live story', () => {
+  const payload = buildDashboardPayload([
+    {id:'low', title:'Lower priority story', summary:'Needs work', audienceTags:['community'], narrativeTags:['innovation'], evidenceQuality:60, freshness:55, authenticityScore:58, relevanceScore:62, reliability:0.7, confidence:0.72, selected: false, connector:'rss', sourceUrl:'https://example.com/low', collectedAt:'2026-07-22T00:00:00Z', status:'REVIEW'},
+    {id:'high', title:'High priority story', summary:'A compelling live recommendation', audienceTags:['community','farmers'], narrativeTags:['resilience','innovation'], evidenceQuality:86, freshness:92, authenticityScore:88, relevanceScore:90, reliability:0.91, confidence:0.95, selected: true, connector:'gdelt-doc', sourceUrl:'https://example.com/high', collectedAt:'2026-07-22T00:00:00Z', status:'VALIDATED'}
+  ], true);
+  assert.equal(payload.priorityDecision.title, 'High priority story');
+  assert.equal(payload.source, 'LIVE');
+  assert.equal(payload.metrics.storiesValidated.value, 2);
+});
+
+test('dashboard falls back cleanly when no live stories are available', () => {
+  const payload = buildDashboardPayload([], false);
+  assert.equal(payload.fallback, true);
+  assert.equal(payload.source, 'FALLBACK');
+  assert.equal(payload.priorityDecision.title, 'Amplify Story: Kenyan Farmers Using Israeli Water Innovation');
+});
+
 test('story list includes evidence and analysis summary',async()=>{const r=await call('GET','/api/stories');assert.equal(r.status,200);assert.ok(Array.isArray(r.payload.stories));assert.ok('evidenceCount' in r.payload.stories[0])});
 test('audience profiles are available',async()=>{const r=await call('GET','/api/audiences');assert.equal(r.status,200);assert.ok(r.payload.audiences.length>=5)});
 test('missing story returns 404',async()=>{const r=await call('GET','/api/stories/not-real');assert.equal(r.status,404)});
