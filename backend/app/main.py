@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.supabase_client import get_admin_profile_id, get_supabase_admin_client
 from app.connectors.census import CensusConnector
 from app.connectors.gdelt import GdeltConnector
 from app.connectors.research_agents import ResearchAgentConnector
@@ -1058,6 +1059,50 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
     }
     _EXECUTIVE_DECISIONS.insert(0, decision)
 
+    admin_profile_id = get_admin_profile_id()
+    supabase = get_supabase_admin_client()
+    normalized_priority = {
+        "CRITICAL": "high",
+        "HIGH": "high",
+        "NORMAL": "medium",
+        "MEDIUM": "medium",
+        "LOW": "low",
+    }.get(sanitize_text(brief.get("priority")).upper(), "medium")
+    normalized_status = {
+        "AWAITING_DECISION": "draft",
+        "APPROVED": "approved",
+        "REJECTED": "rejected",
+        "RESEARCH": "research",
+        "ESCALATED": "escalated",
+        "ARCHIVED": "archived",
+    }.get(sanitize_text(brief.get("status")).upper(), "draft")
+
+    persisted = (
+        supabase.table("decisions")
+        .insert({
+            "title": brief.get("title") or f"Decision for {brief['id']}",
+            "summary": brief.get("summary"),
+            "status": normalized_status,
+            "priority": normalized_priority,
+            "audience_id": brief.get("audienceId"),
+            "audience_name": brief.get("audienceName"),
+            "story_id": brief.get("storyId"),
+            "recommendation": action,
+            "rationale": note or None,
+            "expected_impact": brief.get("expectedImpact"),
+            "confidence_score": brief.get("confidence"),
+            "decision_data": decision,
+            "created_by": admin_profile_id,
+            "updated_by": admin_profile_id,
+            "decided_by": admin_profile_id,
+            "decided_at": now,
+        })
+        .execute()
+    )
+
+    rows = persisted.data or []
+    if rows:
+        decision["databaseId"] = str(rows[0]["id"])
     brief['status'] = _status_for_action(action)
     brief.setdefault('history', [])
     brief['history'].insert(0, {
