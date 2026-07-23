@@ -1162,3 +1162,11 @@ async def run_research_agent(agent_id: str, limit: int = Query(default=20, ge=1,
         "count": len(items),
         "items": [item.model_dump(mode="json") for item in items],
     }
+
+# Hosted-beta static frontend
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
+_STATIC_DIR = Path("/app/static")
+if _STATIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=_STATIC_DIR, html=True), name="frontend")
