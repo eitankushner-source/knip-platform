@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:8080,http://127.0.0.1:8080"
     census_api_key: str | None = None
     http_timeout_seconds: float = 20.0
+    supabase_url: str | None = None
+    supabase_publishable_key: str | None = None
+    supabase_secret_key: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
