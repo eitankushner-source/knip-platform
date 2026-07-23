@@ -1169,7 +1169,87 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
         elif existing_learning_rows:
             learning_record["databaseId"] = str(existing_learning_rows[0]["id"])
 
-    return {'decision': decision, 'brief': brief, 'learningRecord': learning_record}
+    campaign_plan = _CAMPAIGN_PLAN_CACHE.get(f"campaign_{brief.get('storyId')}")
+    if not campaign_plan:
+        campaign_plan = next(
+            (item for item in _CAMPAIGN_PLAN_CACHE.values() if item.get("briefId") == brief["id"]),
+            None,
+        )
+    if not campaign_plan:
+        stories = await aggregate_story_intelligence(limit=20)
+        plans = build_campaign_plans(stories)
+        _CAMPAIGN_PLAN_CACHE.clear()
+        _CAMPAIGN_PLAN_CACHE.update({plan["id"]: plan for plan in plans})
+        campaign_plan = _CAMPAIGN_PLAN_CACHE.get(f"campaign_{brief.get('storyId')}")
+    if not campaign_plan:
+        campaign_plan = {}
+
+    if decision_database_id:
+        normalized_campaign_status = {
+            "DRAFT": "draft",
+            "ACTIVE": "active",
+            "PAUSED": "paused",
+            "COMPLETED": "completed",
+            "ARCHIVED": "archived",
+            "APPROVED": "approved",
+            "REJECTED": "rejected",
+            "RESEARCH": "research",
+            "ESCALATED": "escalated",
+        }.get(sanitize_text(campaign_plan.get("status")).upper(), "draft")
+
+        start_date_value = coerce_datetime(campaign_plan.get("startDate") or campaign_plan.get("start_date"))
+        end_date_value = coerce_datetime(campaign_plan.get("endDate") or campaign_plan.get("end_date"))
+        target_audience_value = campaign_plan.get("targetAudience")
+        if target_audience_value is None:
+            target_audience_value = campaign_plan.get("target_audience")
+        if target_audience_value is None:
+            target_audience_value = campaign_plan.get("audience")
+
+        campaign_payload = {
+            "decision_id": decision_database_id,
+            "title": campaign_plan.get("title") or brief.get("title") or "Campaign plan",
+            "objective": campaign_plan.get("objective") or "",
+            "status": normalized_campaign_status,
+            "target_audience": sanitize_text(target_audience_value),
+            "narrative": campaign_plan.get("narrative") or campaign_plan.get("framing") or "",
+            "channels": campaign_plan.get("channels") or [],
+            "tactics": campaign_plan.get("tactics") or campaign_plan.get("assets") or [],
+            "key_messages": campaign_plan.get("keyMessages") or campaign_plan.get("key_messages") or campaign_plan.get("coreMessages") or [],
+            "success_metrics": campaign_plan.get("successMetrics") or campaign_plan.get("success_metrics") or campaign_plan.get("metrics") or {},
+            "plan_data": campaign_plan,
+            "start_date": start_date_value.date().isoformat() if start_date_value else None,
+            "end_date": end_date_value.date().isoformat() if end_date_value else None,
+            "created_by": admin_profile_id,
+            "updated_by": admin_profile_id,
+        }
+        existing_campaign = (
+            supabase.table("campaign_plans")
+            .select("id")
+            .eq("decision_id", decision_database_id)
+            .limit(1)
+            .execute()
+        )
+        existing_campaign_rows = existing_campaign.data or []
+        if existing_campaign_rows:
+            campaign_persisted = (
+                supabase.table("campaign_plans")
+                .update(campaign_payload)
+                .eq("id", existing_campaign_rows[0]["id"])
+                .execute()
+            )
+        else:
+            campaign_persisted = (
+                supabase.table("campaign_plans")
+                .insert(campaign_payload)
+                .execute()
+            )
+        campaign_rows = campaign_persisted.data or []
+        if campaign_rows:
+            campaign_plan["databaseId"] = str(campaign_rows[0]["id"])
+        elif existing_campaign_rows:
+            campaign_plan["databaseId"] = str(existing_campaign_rows[0]["id"])
+
+    return {'decision': decision, 'brief': brief, 'learningRecord': learning_record, 'campaignPlan': campaign_plan}
 
 
 @app.get('/api/learning/{learning_id}')
