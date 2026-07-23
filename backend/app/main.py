@@ -1101,8 +1101,10 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
     )
 
     rows = persisted.data or []
+    decision_database_id = None
     if rows:
-        decision["databaseId"] = str(rows[0]["id"])
+        decision_database_id = str(rows[0]["id"])
+        decision["databaseId"] = decision_database_id
     brief['status'] = _status_for_action(action)
     brief.setdefault('history', [])
     brief['history'].insert(0, {
@@ -1125,6 +1127,47 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
     learning_record['advisorRecommendations'] = advisor_recommendations
     learning_record['decisionDate'] = now
     learning_record['updatedAt'] = now
+
+    if decision_database_id:
+        learning_payload = {
+            "decision_id": decision_database_id,
+            "title": brief.get("title") or "Learning record",
+            "outcome": action,
+            "lessons_learned": learning_record.get("lessonsLearned") or "",
+            "what_worked": learning_record.get("whatWorked") or "",
+            "what_did_not_work": learning_record.get("whatDidNotWork") or "",
+            "evidence": learning_record.get("evidence") or [],
+            "metrics": learning_record.get("metrics") or {},
+            "learning_data": learning_record,
+            "created_by": admin_profile_id,
+            "updated_by": admin_profile_id,
+        }
+        existing_learning = (
+            supabase.table("learning_records")
+            .select("id")
+            .eq("decision_id", decision_database_id)
+            .limit(1)
+            .execute()
+        )
+        existing_learning_rows = existing_learning.data or []
+        if existing_learning_rows:
+            learning_persisted = (
+                supabase.table("learning_records")
+                .update(learning_payload)
+                .eq("id", existing_learning_rows[0]["id"])
+                .execute()
+            )
+        else:
+            learning_persisted = (
+                supabase.table("learning_records")
+                .insert(learning_payload)
+                .execute()
+            )
+        learning_rows = learning_persisted.data or []
+        if learning_rows:
+            learning_record["databaseId"] = str(learning_rows[0]["id"])
+        elif existing_learning_rows:
+            learning_record["databaseId"] = str(existing_learning_rows[0]["id"])
 
     return {'decision': decision, 'brief': brief, 'learningRecord': learning_record}
 
