@@ -10,6 +10,7 @@ const PORT = Number(process.env.PORT || 3000);
 const DATA_FILE = path.resolve(__dirname, process.env.KNIP_DATA_FILE || './data/database.json');
 const SEED_FILE = path.resolve(__dirname, './data/seed.json');
 const VERSION = '0.9.0-alpha-ai-advisory-board';
+const LEGACY_NODE_DISABLED_IN_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.KNIP_DISABLE_LEGACY_NODE === '1';
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
 const AUDIENCE_PROFILES = [
   { id: 'aud_mod_dems', name: 'Moderate Democrats', signals: ['democracy', 'bipartisan cooperation', 'climate resilience', 'healthcare', 'humanitarian impact', 'pragmatic u.s.–israel cooperation'], values: ['cooperation', 'pragmatism', 'shared values'], geography: ['United States'], channels: ['email', 'digital video'], messengers: ['community leaders'] },
@@ -631,6 +632,9 @@ export { normalizeStoryItem, deduplicateStories, scoreStory, buildDashboardPaylo
 export async function handleRequest(req,res) {
   const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
   if(req.method==='GET'&&url.pathname==='/api/health') return sendJson(res,200,{status:'ok',service:'knip-platform',version:VERSION,timestamp:new Date().toISOString()});
+  if(LEGACY_NODE_DISABLED_IN_PRODUCTION&&url.pathname.startsWith('/api/')) {
+    return sendJson(res,503,{error:'Legacy Node runtime is disabled for production paths. Use the FastAPI runtime.'});
+  }
   if(req.method==='GET'&&url.pathname==='/api/audiences'){return sendJson(res,200,{audiences:getAudienceProfiles()});}
   if(req.method==='GET'&&url.pathname.startsWith('/api/audiences/')){
     const audienceId=url.pathname.split('/').pop();

@@ -20,18 +20,15 @@ def get_supabase_admin_client() -> Client:
         settings.supabase_secret_key,
     )
 
-def get_admin_profile_id() -> str:
+def get_profile_for_auth_user(auth_user_id: str) -> dict | None:
     client = get_supabase_admin_client()
     response = (
         client.table("profiles")
         .select("id")
-        .eq("email", "eitankushner@gmail.com")
+        .eq("id", auth_user_id)
         .limit(1)
         .execute()
     )
 
     rows = response.data or []
-    if not rows:
-        raise RuntimeError("Admin profile was not found in Supabase")
-
-    return str(rows[0]["id"])
+    return rows[0] if rows else None

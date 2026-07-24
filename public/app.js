@@ -1,6 +1,8 @@
 const $ = selector => document.querySelector(selector);
 let selectedId = null;
 let selectedCampaignId = null;
+let knipSupabase = null;
+let authSession = null;
 
 const ROUTE_STATUS = Object.freeze({
   executive: 'LIVE',
@@ -42,15 +44,84 @@ if (typeof window !== 'undefined') {
   window.KNIP_ROUTE_STATUS = ROUTE_STATUS;
 }
 
+function updateAuthUi() {
+  const status = $('#authStatus');
+  const loginForm = $('#authLoginForm');
+  const logoutButton = $('#authLogout');
+  const email = authSession?.user?.email || 'Signed out';
+
+  if (status) status.textContent = email;
+  if (loginForm) loginForm.hidden = Boolean(authSession);
+  if (logoutButton) logoutButton.hidden = !authSession;
+}
+
+async function loadAuthConfig() {
+  const response = await fetch('/api/auth/config');
+  if (!response.ok) throw new Error('Unable to load auth config');
+  return response.json();
+}
+
+async function initAuth() {
+  if (!window.supabase?.createClient) return;
+  try {
+    const config = await loadAuthConfig();
+    if (!config.supabaseUrl || !config.supabasePublishableKey) return;
+
+    knipSupabase = window.supabase.createClient(config.supabaseUrl, config.supabasePublishableKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    });
+
+    const { data } = await knipSupabase.auth.getSession();
+    authSession = data.session || null;
+    updateAuthUi();
+
+    knipSupabase.auth.onAuthStateChange((_event, session) => {
+      authSession = session || null;
+      updateAuthUi();
+    });
+
+    const loginForm = $('#authLoginForm');
+    if (loginForm) {
+      loginForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const email = $('#authEmail')?.value || '';
+        const password = $('#authPassword')?.value || '';
+        const { error } = await knipSupabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      });
+    }
+
+    const logoutButton = $('#authLogout');
+    if (logoutButton) {
+      logoutButton.addEventListener('click', async () => {
+        await knipSupabase.auth.signOut();
+      });
+    }
+  } catch (error) {
+    console.warn('[KNIP auth] initialization skipped:', error.message);
+  }
+}
+
 async function api(path, options = {}) {
+  const accessToken = authSession?.access_token;
   const response = await fetch(path, {
-    headers: { 'content-type': 'application/json', ...(options.headers || {}) },
+    headers: {
+      'content-type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(options.headers || {})
+    },
     ...options
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || payload.detail || 'Request failed');
   return payload;
 }
+
+initAuth();
 
 function esc(value = '') {
   return String(value).replace(/[&<>'"]/g, character => ({

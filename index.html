@@ -44,8 +44,14 @@
       </div>
       <div class="top-actions">
         <label class="search">⌕ <input id="globalSearch" placeholder="Search KNIP..."/><kbd>Ctrl K</kbd></label>
+        <form id="authLoginForm" class="search" autocomplete="on">
+          <input id="authEmail" type="email" placeholder="Email" required />
+          <input id="authPassword" type="password" placeholder="Password" required />
+          <button class="icon-btn" type="submit" title="Login">Login</button>
+        </form>
+        <button id="authLogout" class="icon-btn" type="button" title="Logout" hidden>Logout</button>
+        <div class="profile"><span>ID</span><div><b id="authStatus">Signed out</b><small>Supabase Auth</small></div></div>
         <button class="icon-btn" title="Notifications">♢<span class="badge">3</span></button>
-        <div class="profile"><span>EK</span><div><b>Ethan Kushner</b><small>Executive Director</small></div></div>
       </div>
     </header>
 
@@ -366,6 +372,7 @@
   </main>
 </div>
 <div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="api.js"></script>
 <script src="app.js"></script>
 </body>

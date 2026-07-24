@@ -1,3 +1,5 @@
+import pytest
+from app.auth import AuthenticatedProfile, require_authenticated_profile
 from app.main import aggregate_story_intelligence, app, build_dashboard_payload, normalize_story_item
 from app.models import IntelligenceItem, SourceRecord
 from datetime import datetime, timezone
@@ -6,6 +8,41 @@ from fastapi.testclient import TestClient
 
 
 client = TestClient(app)
+
+
+@pytest.fixture
+def _decision_action_isolation(monkeypatch):
+    class _Response:
+        def __init__(self, data):
+            self.data = data
+
+    class _DecisionsInsertQuery:
+        def insert(self, _payload: dict):
+            return self
+
+        def execute(self):
+            # Return no inserted rows so endpoint skips downstream learning/campaign persistence branches.
+            return _Response([])
+
+    class _MinimalSupabaseClient:
+        def table(self, table_name: str):
+            if table_name != 'decisions':
+                raise AssertionError(f'Unexpected table access in decision-action isolation fixture: {table_name}')
+            return _DecisionsInsertQuery()
+
+    def _fake_authenticated_profile() -> AuthenticatedProfile:
+        return AuthenticatedProfile(
+            supabase_user_id='11111111-1111-1111-1111-111111111111',
+            profile_id='11111111-1111-1111-1111-111111111111',
+            email='parity-test@example.com',
+        )
+
+    app.dependency_overrides[require_authenticated_profile] = _fake_authenticated_profile
+    monkeypatch.setattr('app.main.get_supabase_admin_client', lambda: _MinimalSupabaseClient())
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(require_authenticated_profile, None)
 
 
 def test_normalize_story_item_adds_audience_metadata():
@@ -107,10 +144,21 @@ def test_advisory_board_contains_all_roles_and_live_labeling():
 
 
 def test_challenge_endpoint_returns_revised_recommendation():
-    response = client.post('/api/advisory-board/challenge', json={'challenge': 'The evidence is too thin and the risk is reputational.'})
-    assert response.status_code == 200
-    assert response.json()['revisedRecommendation'] in {'MODIFY', 'MONITOR', 'DELAY'}
-    assert response.json()['sourceMode'] in {'LIVE', 'RULE_BASED', 'FALLBACK'}
+    def _fake_authenticated_profile() -> AuthenticatedProfile:
+        return AuthenticatedProfile(
+            supabase_user_id='11111111-1111-1111-1111-111111111111',
+            profile_id='11111111-1111-1111-1111-111111111111',
+            email='parity-test@example.com',
+        )
+
+    app.dependency_overrides[require_authenticated_profile] = _fake_authenticated_profile
+    try:
+        response = client.post('/api/advisory-board/challenge', json={'challenge': 'The evidence is too thin and the risk is reputational.'})
+        assert response.status_code == 200
+        assert response.json()['revisedRecommendation'] in {'MODIFY', 'MONITOR', 'DELAY'}
+        assert response.json()['sourceMode'] in {'LIVE', 'RULE_BASED', 'FALLBACK'}
+    finally:
+        app.dependency_overrides.pop(require_authenticated_profile, None)
 
 
 def test_consensus_endpoint_exposes_consensus_and_minorities():
@@ -224,7 +272,7 @@ def test_decision_detail_compatibility_shape_and_404():
     assert missing.json()['detail'] == 'Decision brief not found'
 
 
-def test_decision_action_compatibility_shape_and_unknown_id_404():
+def test_decision_action_compatibility_shape_and_unknown_id_404(_decision_action_isolation):
     listing = client.get('/api/decisions')
     assert listing.status_code == 200
     briefs = listing.json()['decisionBriefs']
@@ -267,28 +315,39 @@ def test_learning_detail_compatibility_shape_and_404():
 
 
 def test_learning_update_compatibility_shape_and_preservation():
-    listing = client.get('/api/decisions')
-    assert listing.status_code == 200
-    briefs = listing.json()['decisionBriefs']
-    assert briefs
-    brief_id = briefs[0]['id']
+    def _fake_authenticated_profile() -> AuthenticatedProfile:
+        return AuthenticatedProfile(
+            supabase_user_id='11111111-1111-1111-1111-111111111111',
+            profile_id='11111111-1111-1111-1111-111111111111',
+            email='parity-test@example.com',
+        )
 
-    before = client.get(f'/api/learning/{brief_id}')
-    assert before.status_code == 200
-    original = before.json()['learningRecord']
+    app.dependency_overrides[require_authenticated_profile] = _fake_authenticated_profile
+    try:
+        listing = client.get('/api/decisions')
+        assert listing.status_code == 200
+        briefs = listing.json()['decisionBriefs']
+        assert briefs
+        brief_id = briefs[0]['id']
 
-    response = client.put(
-        f'/api/learning/{brief_id}',
-        json={'outcome': 'SUCCESS', 'lessonsLearned': 'Compatibility path verified.'},
-    )
-    assert response.status_code == 200
-    payload = response.json()
-    assert 'learningRecord' in payload
-    updated = payload['learningRecord']
-    assert updated['briefId'] == brief_id
-    assert updated['id'] == original['id']
-    assert updated['outcome'] == 'SUCCESS'
-    assert updated['lessonsLearned'] == 'Compatibility path verified.'
+        before = client.get(f'/api/learning/{brief_id}')
+        assert before.status_code == 200
+        original = before.json()['learningRecord']
+
+        response = client.put(
+            f'/api/learning/{brief_id}',
+            json={'outcome': 'SUCCESS', 'lessonsLearned': 'Compatibility path verified.'},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert 'learningRecord' in payload
+        updated = payload['learningRecord']
+        assert updated['briefId'] == brief_id
+        assert updated['id'] == original['id']
+        assert updated['outcome'] == 'SUCCESS'
+        assert updated['lessonsLearned'] == 'Compatibility path verified.'
+    finally:
+        app.dependency_overrides.pop(require_authenticated_profile, None)
 
 
 def test_learning_intelligence_compatibility_shape():

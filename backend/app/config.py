@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     supabase_url: str | None = None
     supabase_publishable_key: str | None = None
     supabase_secret_key: str | None = None
+    supabase_jwt_audience: str = "authenticated"
+    supabase_jwt_issuer: str | None = None
+    supabase_jwt_jwks_url: str | None = None
+    supabase_jwt_secret: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

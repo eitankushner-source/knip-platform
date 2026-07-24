@@ -53,13 +53,19 @@
           <p id="headerDate" class="headerDate">Loading date…</p>
         </div>
         <div class="commandActions">
+          <form id="authLoginForm" class="searchField" autocomplete="on" aria-label="Login form">
+            <input id="authEmail" type="email" placeholder="Email" aria-label="Email" required>
+            <input id="authPassword" type="password" placeholder="Password" aria-label="Password" required>
+            <button class="iconButton" type="submit" aria-label="Login">Login</button>
+          </form>
+          <button id="authLogout" class="iconButton" type="button" aria-label="Logout" hidden>Logout</button>
+          <div class="userBadge" aria-label="Signed in user"><span>ID</span><div><strong id="authStatus">Signed out</strong><small>Supabase Auth</small></div></div>
           <label class="searchField" aria-label="Global KNIP search">
             <span aria-hidden="true">⌕</span>
             <input type="search" placeholder="Global KNIP search" aria-label="Global KNIP search">
           </label>
           <button id="notifications" class="iconButton" type="button" aria-label="Notifications">🔔</button>
           <button id="inbox" class="iconButton" type="button" aria-label="Inbox">✉</button>
-          <div class="userBadge" aria-label="Signed in user"><span>EK</span><div><strong>Ethan</strong><small>Executive lead</small></div></div>
           <button class="customizeButton" type="button">Customize Home</button>
         </div>
       </header>
@@ -67,6 +73,7 @@
       <main id="appContent" tabindex="-1"></main>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

@@ -5,11 +5,12 @@ from html import unescape
 from hashlib import sha256
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.supabase_client import get_admin_profile_id, get_supabase_admin_client
+from app.auth import AuthenticatedProfile, require_authenticated_profile
+from app.supabase_client import get_supabase_admin_client
 from app.connectors.census import CensusConnector
 from app.connectors.gdelt import GdeltConnector
 from app.connectors.research_agents import ResearchAgentConnector
@@ -891,6 +892,14 @@ async def health() -> dict:
     return {"status": "ok", "version": "0.2.0-rc2", "time": datetime.now(timezone.utc).isoformat()}
 
 
+@app.get("/api/auth/config")
+async def auth_config() -> dict:
+    return {
+        "supabaseUrl": settings.supabase_url,
+        "supabasePublishableKey": settings.supabase_publishable_key,
+    }
+
+
 @app.get("/api/dashboard")
 async def dashboard() -> dict:
     return await dashboard_service.get_dashboard()
@@ -969,7 +978,10 @@ async def advisory_board_consensus() -> dict:
 
 
 @app.post("/api/advisory-board/challenge")
-async def advisory_board_challenge(payload: dict) -> dict:
+async def advisory_board_challenge(
+    payload: dict,
+    _auth: AuthenticatedProfile = Depends(require_authenticated_profile),
+) -> dict:
     stories = await aggregate_story_intelligence(limit=20)
     priority = stories[0] if stories else None
     challenge = payload.get('challenge', '') if isinstance(payload, dict) else ''
@@ -1032,7 +1044,11 @@ async def decision_detail(decision_id: str) -> dict:
 
 
 @app.post('/api/decisions/{decision_id}/actions')
-async def decision_action(decision_id: str, payload: dict) -> dict:
+async def decision_action(
+    decision_id: str,
+    payload: dict,
+    auth: AuthenticatedProfile = Depends(require_authenticated_profile),
+) -> dict:
     brief = _DECISION_BRIEF_CACHE.get(decision_id)
     if not brief:
         stories = await aggregate_story_intelligence(limit=20)
@@ -1054,12 +1070,12 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
         'storyId': brief.get('storyId'),
         'action': action,
         'note': note,
-        'actorId': 'usr_admin',
+        'actorId': auth.profile_id,
         'createdAt': now,
     }
     _EXECUTIVE_DECISIONS.insert(0, decision)
 
-    admin_profile_id = get_admin_profile_id()
+    profile_id = auth.profile_id
     supabase = get_supabase_admin_client()
     normalized_priority = {
         "CRITICAL": "high",
@@ -1092,9 +1108,9 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
             "expected_impact": brief.get("expectedImpact"),
             "confidence_score": brief.get("confidence"),
             "decision_data": decision,
-            "created_by": admin_profile_id,
-            "updated_by": admin_profile_id,
-            "decided_by": admin_profile_id,
+            "created_by": profile_id,
+            "updated_by": profile_id,
+            "decided_by": profile_id,
             "decided_at": now,
         })
         .execute()
@@ -1109,7 +1125,7 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
     brief.setdefault('history', [])
     brief['history'].insert(0, {
         'at': now,
-        'actor': 'Ethan Kushner',
+        'actor': auth.display_name,
         'action': f"Executive decision: {action}{f' - {note}' if note else ''}",
     })
 
@@ -1123,7 +1139,7 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
         for item in brief.get('advisors', [])
     }
     learning_record['decision'] = action
-    learning_record['decisionMaker'] = 'Ethan Kushner'
+    learning_record['decisionMaker'] = auth.display_name
     learning_record['advisorRecommendations'] = advisor_recommendations
     learning_record['decisionDate'] = now
     learning_record['updatedAt'] = now
@@ -1139,8 +1155,8 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
             "evidence": learning_record.get("evidence") or [],
             "metrics": learning_record.get("metrics") or {},
             "learning_data": learning_record,
-            "created_by": admin_profile_id,
-            "updated_by": admin_profile_id,
+            "created_by": profile_id,
+            "updated_by": profile_id,
         }
         existing_learning = (
             supabase.table("learning_records")
@@ -1219,8 +1235,8 @@ async def decision_action(decision_id: str, payload: dict) -> dict:
             "plan_data": campaign_plan,
             "start_date": start_date_value.date().isoformat() if start_date_value else None,
             "end_date": end_date_value.date().isoformat() if end_date_value else None,
-            "created_by": admin_profile_id,
-            "updated_by": admin_profile_id,
+            "created_by": profile_id,
+            "updated_by": profile_id,
         }
         existing_campaign = (
             supabase.table("campaign_plans")
@@ -1266,7 +1282,11 @@ async def learning_detail(learning_id: str) -> dict:
 
 
 @app.put('/api/learning/{learning_id}')
-async def learning_update(learning_id: str, payload: dict) -> dict:
+async def learning_update(
+    learning_id: str,
+    payload: dict,
+    _auth: AuthenticatedProfile = Depends(require_authenticated_profile),
+) -> dict:
     if not _DECISION_BRIEF_CACHE:
         stories = await aggregate_story_intelligence(limit=20)
         decision_briefs = _sync_decision_cache(build_decision_briefs(stories))
@@ -1319,7 +1339,11 @@ async def list_research_agents() -> dict:
 
 
 @app.post("/api/research-agents/{agent_id}/run")
-async def run_research_agent(agent_id: str, limit: int = Query(default=20, ge=1, le=100)) -> dict:
+async def run_research_agent(
+    agent_id: str,
+    limit: int = Query(default=20, ge=1, le=100),
+    _auth: AuthenticatedProfile = Depends(require_authenticated_profile),
+) -> dict:
     try:
         definition = research_agents.definition(agent_id)
         items = await research_agents.run(agent_id, limit=limit)

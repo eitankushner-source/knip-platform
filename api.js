@@ -5,6 +5,8 @@
  */
 (function () {
   const baseUrl = window.KNIP_API_BASE || '/api';
+  let supabaseClient = null;
+  let currentSession = null;
   const capabilityMap = Object.freeze({
     dashboard: { method: 'GET', path: '/dashboard', mode: 'LIVE|FALLBACK', consumer: 'legacy executive home hydration' },
     stories: { method: 'GET', path: '/stories', mode: 'LIVE', consumer: 'legacy story repository integration' },
@@ -18,6 +20,70 @@
     campaignPlans: { method: 'GET', path: '/campaign-plans', mode: 'LIVE', consumer: 'campaign planning summaries' },
     campaignPlanDetail: { method: 'GET', path: '/campaign-plans/{planId}', mode: 'LIVE', consumer: 'campaign plan drill-in' }
   });
+
+  function updateAuthUi() {
+    const status = document.getElementById('authStatus');
+    const loginForm = document.getElementById('authLoginForm');
+    const logoutButton = document.getElementById('authLogout');
+    const email = currentSession?.user?.email || 'Signed out';
+
+    if (status) status.textContent = email;
+    if (loginForm) loginForm.hidden = Boolean(currentSession);
+    if (logoutButton) logoutButton.hidden = !currentSession;
+  }
+
+  async function loadAuthConfig() {
+    const response = await fetch(`${baseUrl}/auth/config`);
+    if (!response.ok) throw new Error('Unable to load auth configuration');
+    return response.json();
+  }
+
+  async function initAuth() {
+    if (!window.supabase?.createClient) return;
+    try {
+      const config = await loadAuthConfig();
+      if (!config.supabaseUrl || !config.supabasePublishableKey) return;
+
+      supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabasePublishableKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      });
+
+      const { data } = await supabaseClient.auth.getSession();
+      currentSession = data.session || null;
+      updateAuthUi();
+
+      supabaseClient.auth.onAuthStateChange((_event, session) => {
+        currentSession = session || null;
+        updateAuthUi();
+      });
+
+      const loginForm = document.getElementById('authLoginForm');
+      if (loginForm) {
+        loginForm.addEventListener('submit', async event => {
+          event.preventDefault();
+          const emailInput = document.getElementById('authEmail');
+          const passwordInput = document.getElementById('authPassword');
+          const email = emailInput?.value || '';
+          const password = passwordInput?.value || '';
+          const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+        });
+      }
+
+      const logoutButton = document.getElementById('authLogout');
+      if (logoutButton) {
+        logoutButton.addEventListener('click', async () => {
+          await supabaseClient.auth.signOut();
+        });
+      }
+    } catch (error) {
+      console.warn('[KNIP auth] initialization skipped:', error.message);
+    }
+  }
 
   const fallbackDashboard = {
     generatedAt: '2026-07-22T07:00:00+03:00',
@@ -44,8 +110,13 @@
   };
 
   async function request(path, options = {}) {
+    const authToken = currentSession?.access_token;
     const response = await fetch(`${baseUrl}${path}`, {
-      headers: { 'Accept': 'application/json', ...(options.headers || {}) },
+      headers: {
+        'Accept': 'application/json',
+        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+        ...(options.headers || {})
+      },
       ...options
     });
     if (!response.ok) throw new Error(`KNIP API ${response.status}: ${response.statusText}`);
@@ -66,8 +137,31 @@
     getResearchAgents() { return request('/research-agents'); },
     runResearchAgent(agentId, limit = 20) { return request(`/research-agents/${encodeURIComponent(agentId)}/run?limit=${limit}`, { method: 'POST' }); },
     getStateDemographics(year = 2024) { return request(`/demographics/states?year=${year}`); },
+    auth: {
+      async login(email, password) {
+        if (!supabaseClient) throw new Error('Supabase Auth is not configured');
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      },
+      async logout() {
+        if (!supabaseClient) return;
+        await supabaseClient.auth.signOut();
+      },
+      async restoreSession() {
+        if (!supabaseClient) return null;
+        const { data } = await supabaseClient.auth.getSession();
+        currentSession = data.session || null;
+        updateAuthUi();
+        return currentSession;
+      },
+      get accessToken() {
+        return currentSession?.access_token || null;
+      },
+    },
     capabilityMap,
     request,
     baseUrl
   };
+
+  initAuth();
 })();
